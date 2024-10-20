@@ -1357,7 +1357,7 @@ class WP_TripAdvisor_Review_Admin {
 	//for calling remote get and returning array of reviews to insert, calling Crawler now crawl.ljapps.com
 	public function wprpfree_getapps_getrevs_page_tripadvisor($type,$listedurl,$pagenum,$perpage,$savedpageid,$nhful,$fid,$blockstoinsert,$nextpageurl,$iscron){
 		$result['ack']='success';
-		set_time_limit(120);
+		set_time_limit(150);
 			$errormsg='';
 			$reviewsarraytemp = Array();
 			$nhful='new';
@@ -1377,7 +1377,7 @@ class WP_TripAdvisor_Review_Admin {
 				$siteurl = urlencode(get_site_url());
 				
 				//scrapeurl
-				$tempurlval = 'https://crawl.ljapps.com/crawlrevs?rip='.$ip_server.'&surl='.$siteurl.'&scrapeurl='.$listedurl.'&stype=tripadvisor&sfp=pro&nhful='.$nhful.'&locationtype=&scrapequery=&tempbusinessname=&pagenum='.$pagenum.'&nextpageurl='.$nextpageurl.'&iscron='.$iscron.'&sfp=free&nobot=1';
+				$tempurlval = 'https://crawl.ljapps.com/crawlrevs?rip='.$ip_server.'&surl='.$siteurl.'&scrapeurl='.$listedurl.'&stype=tripadvisor&nhful='.$nhful.'&locationtype=&scrapequery=&tempbusinessname=&pagenum='.$pagenum.'&nextpageurl='.$nextpageurl.'&iscron='.$iscron.'&sfp=free&nobot=1';
 				
 				//https://crawl.ljapps.com/crawlrevs?rip=127.0.0.1&surl=https%3A%2F%2Fwptest.ljapps.com&scrapeurl=https://www.tripadvisor.com/Hotel_Review-g7928511-d27689503-Reviews-Feridhoo_Beach_Villa-Feridhoo.html&stype=tripadvisor&sfp=pro&nhful=new&locationtype=&scrapequery=&tempbusinessname=&pagenum=1&nextpageurl=&iscron=yes&sfp=free&nobot=1
 				
@@ -1401,6 +1401,25 @@ class WP_TripAdvisor_Review_Admin {
 					echo $results;
 					die();
 				}
+				
+				//testing------
+				//$serverresponse='';
+
+		//check for block or timeout
+		//====================
+		if (strpos($serverresponse, "Please wait while your request is being verified") !== false || !isset($serverresponse) || $serverresponse=='') {
+		   //this site is greylisted by imunify360 on cloudways, call backup digital ocean server
+		   $response = wp_remote_get( 'https://ocean.ljapps.com/crawlrevs.php?rip='.$ip_server.'&surl='.$siteurl.'&scrapeurl='.$listedurl.'&stype=tripadvisor&nhful='.$nhful.'&locationtype=&scrapequery=&tempbusinessname=&pagenum='.$pagenum.'&nextpageurl='.$nextpageurl.'&iscron='.$iscron.'&sfp=free&nobot=1', array( 'sslverify' => false, 'timeout' => 150 ) );
+			if ( is_array( $response ) && ! is_wp_error( $response ) ) {
+				$headers = $response['headers']; // array of http header lines
+				$serverresponse    = $response['body']; // use the content
+			}
+		}
+		//=========================	
+	
+	
+	
+	
 	
 				$serverresponsearray = json_decode($serverresponse, true);
 
