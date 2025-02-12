@@ -1672,7 +1672,7 @@ class WP_TripAdvisor_Review_Admin {
 					$html = wptrip_str_get_html($fileurlcontents);
 					
 					//unset($fileurlcontents);
-					//echo "testhere";
+					//echo $fileurlcontents;
 					//var_dump($html);
 					//die();
 					
