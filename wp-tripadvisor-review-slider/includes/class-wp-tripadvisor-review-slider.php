@@ -69,7 +69,7 @@ class WP_TripAdvisor_Review {
 	public function __construct() {
 
 		$this->_token = 'wp-tripadvisor-review-slider';
-		$this->version = '13.5';
+		$this->version = '13.6';
 		//using this for development
 		//$this->version = time();
 
