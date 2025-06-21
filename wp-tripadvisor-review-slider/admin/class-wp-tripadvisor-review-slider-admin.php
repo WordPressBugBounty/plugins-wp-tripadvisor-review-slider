@@ -1366,6 +1366,7 @@ class WP_TripAdvisor_Review_Admin {
 					
 				$stripvariableurl = stripslashes($listedurl);
 				$listedurl = strtok($stripvariableurl, '?');	//remove all parameters
+				$listedurl = preg_replace('/#REVIEWS$/i', '', $listedurl);
 				
 				
 				if(isset($_SERVER['SERVER_ADDR']) && $_SERVER['SERVER_ADDR']!=''){
@@ -1380,6 +1381,8 @@ class WP_TripAdvisor_Review_Admin {
 				$tempurlval = 'https://crawl.ljapps.com/crawlrevs?rip='.$ip_server.'&surl='.$siteurl.'&scrapeurl='.$listedurl.'&stype=tripadvisor&nhful='.$nhful.'&locationtype=&scrapequery=&tempbusinessname=&pagenum='.$pagenum.'&nextpageurl='.$nextpageurl.'&iscron='.$iscron.'&sfp=free&nobot=1';
 				
 				//https://crawl.ljapps.com/crawlrevs?rip=127.0.0.1&surl=https%3A%2F%2Fwptest.ljapps.com&scrapeurl=https://www.tripadvisor.com/Hotel_Review-g7928511-d27689503-Reviews-Feridhoo_Beach_Villa-Feridhoo.html&stype=tripadvisor&sfp=pro&nhful=new&locationtype=&scrapequery=&tempbusinessname=&pagenum=1&nextpageurl=&iscron=yes&sfp=free&nobot=1
+				
+				
 				
 				//echo $tempurlval;
 				//die();
