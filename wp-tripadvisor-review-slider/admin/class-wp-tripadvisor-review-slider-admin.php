@@ -1299,6 +1299,7 @@ class WP_TripAdvisor_Review_Admin {
 							'type' => 'TripAdvisor',
 							'review_title' => $review['review_title'],
 							'mediaurlsarrayjson' => $review['mediaurlsarrayjson'],
+							'from_url' => isset($review['from_url']) ? $review['from_url'] : '',
 					];
 				}
 			}

@@ -317,6 +317,12 @@
 							reviewtext = String(object[index].review_text);
 							reviewtext = reviewtext.replace(/\\'/g,'\'').replace(/\"/g,'"').replace(/\\\\/g,'\\').replace(/\\0/g,'\0');
 							
+							// Build Type column with link if from_url exists
+							var typecolumn = object[index].type;
+							if(object[index].from_url && object[index].from_url !== ''){
+								typecolumn = '<a href="'+object[index].from_url+'" target="_blank" rel="noopener noreferrer">'+object[index].type+'</a>';
+							}
+							
 							htmltext = htmltext + '<tr id="'+object[index].id+'">	\
 								<th scope="col" class="manage-column">'+hideicon+' '+editdellink+'</th>	\
 								<th scope="col" class="wprev_row_userpic">'+userpic+'</th>	\
@@ -326,7 +332,7 @@
 								<th scope="col" class="wprev_row_created_time manage-column">'+object[index].created_time+'</th>	\
 								<th scope="col" class="manage-column">'+object[index].review_length+'</th>	\
 								<th scope="col" class="manage-column">'+object[index].pagename+'</th>	\
-								<th scope="col" class="manage-column">'+object[index].type+'</th>	\
+								<th scope="col" class="manage-column">'+typecolumn+'</th>	\
 							</tr>';
 							reviewtext ='';
 						}

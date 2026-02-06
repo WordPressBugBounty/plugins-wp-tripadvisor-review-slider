@@ -69,7 +69,7 @@ class WP_TripAdvisor_Review {
 	public function __construct() {
 
 		$this->_token = 'wp-tripadvisor-review-slider';
-		$this->version = '14.0';
+		$this->version = '14.1';
 		//using this for development
 		//$this->version = time();
 
@@ -119,6 +119,7 @@ class WP_TripAdvisor_Review {
 				review_title varchar(500) DEFAULT '' NOT NULL,
 				mediaurlsarrayjson text NOT NULL,
 				mediathumburlsarrayjson text NOT NULL,
+				from_url varchar(500) DEFAULT '' NOT NULL,
 				UNIQUE KEY id (id),
 				PRIMARY KEY (id)
 			) $charset_collate;";

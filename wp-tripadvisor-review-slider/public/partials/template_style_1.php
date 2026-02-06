@@ -47,11 +47,15 @@ for ($x = 0; $x < count($rowarray); $x++) {
 		
 		//star number 
 		if($review->type=="TripAdvisor"){
-			//find business url
-			$options = get_option('wptripadvisor_tripadvisor_settings');
-			$burl = $options['tripadvisor_business_url'];
-			if($burl==""){
-				$burl="https://www.tripadvisor.com";
+			//find business url - use review's from_url if available, otherwise fall back to options
+			if(isset($review->from_url) && !empty($review->from_url)){
+				$burl = $review->from_url;
+			} else {
+				$options = get_option('wptripadvisor_tripadvisor_settings');
+				$burl = $options['tripadvisor_business_url'];
+				if($burl==""){
+					$burl="https://www.tripadvisor.com";
+				}
 			}
 			$starfile = "tripadvisor_stars_".$review->rating.".png";
 			$logo = '<a href="'.$burl.'" target="_blank" rel="nofollow"><img src="'.$imgs_url.'tripadvisor_outline.png" alt="tripadvisor logo" class="wptripadvisor_t1_tripadvisor_logo"></a>';

@@ -80,7 +80,8 @@ class WP_TripAdvisor_Review_Activator {
 			userpic varchar(250) DEFAULT '' NOT NULL,
 			review_title varchar(500) DEFAULT '' NOT NULL,
 			mediaurlsarrayjson text NOT NULL,
-			mediathumburlsarrayjson text NOT NULL
+			mediathumburlsarrayjson text NOT NULL,
+			from_url varchar(500) DEFAULT '' NOT NULL,
 			UNIQUE KEY id (id),
 			PRIMARY KEY (id)
 		) $charset_collate;";

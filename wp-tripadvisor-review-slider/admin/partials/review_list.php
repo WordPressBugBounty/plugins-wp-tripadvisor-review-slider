@@ -212,6 +212,12 @@ _e('Hide certain reviews, download avatars, manually add reviews, save a CSV fil
 				}
 				
 	
+				// Build Type column with link if from_url exists
+				$typecolumn = $reviewsrow->type;
+				if(!empty($reviewsrow->from_url)){
+					$typecolumn = '<a href="'.esc_url($reviewsrow->from_url).'" target="_blank" rel="noopener noreferrer">'.$reviewsrow->type.'</a>';
+				}
+				
 				$html .= '<tr id="'.$reviewsrow->id.'">
 						<th scope="col" class="manage-column"><a title="delete" alt="delete" href="'.$deleteurl.'">'.$deleteicon.'</a></th>
 						<th scope="col" class="manage-column">'.$userpic.'</th>
@@ -219,7 +225,7 @@ _e('Hide certain reviews, download avatars, manually add reviews, save a CSV fil
 						<th scope="col" class="manage-column">'.$reviewsrow->rating.'</th>
 						<th scope="col" class="manage-column">'.$revtitle.$reviewsrow->review_text.$mediahtml.'</th>
 						<th scope="col" class="manage-column">'.$reviewsrow->created_time.'</th>
-						<th scope="col" class="manage-column">'.$reviewsrow->type.'</th>
+						<th scope="col" class="manage-column">'.$typecolumn.'</th>
 					</tr>';
 			}
 		} else {
