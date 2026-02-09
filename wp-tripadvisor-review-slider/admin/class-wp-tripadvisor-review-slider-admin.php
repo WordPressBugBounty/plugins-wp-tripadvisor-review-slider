@@ -410,6 +410,12 @@ class WP_TripAdvisor_Review_Admin {
 		
 		check_ajax_referer('randomnoncestring', 'wptripadvisor_nonce');
 		
+		// SECURITY FIX: Verify user has permission to manage reviews
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error('Insufficient permissions');
+			wp_die();
+		}
+		
 		$postreviewarray = $_POST['postreviewarray'];
 		
 		//var_dump($postreviewarray);
@@ -421,22 +427,26 @@ class WP_TripAdvisor_Review_Admin {
 		$stats = array();
 		
 		foreach($postreviewarray as $item) { //foreach element in $arr
-			$pageid = $item['pageid'];
-			$pagename = $item['pagename'];
-			$created_time = $item['created_time'];
+			// SECURITY FIX: Sanitize all input data
+			$pageid = sanitize_text_field($item['pageid']);
+			$pagename = sanitize_text_field($item['pagename']);
+			$created_time = sanitize_text_field($item['created_time']);
 			$created_time_stamp = strtotime($created_time);
-			$reviewer_name = $item['reviewer_name'];
-			$reviewer_id = $item['reviewer_id'];
-			$rating = $item['rating'];
-			$review_text = $item['review_text'];
+			$reviewer_name = sanitize_text_field($item['reviewer_name']);
+			$reviewer_id = sanitize_text_field($item['reviewer_id']);
+			$rating = intval($item['rating']);
+			$review_text = wp_kses_post($item['review_text']);
 			$review_length = str_word_count($review_text);
-			$rtype = $item['type'];
+			$rtype = sanitize_text_field($item['type']);
 			
 			//check to see if row is in db already
-			//$checkrow = $wpdb->get_row( "SELECT id FROM ".$table_name." WHERE created_time = '$created_time'" );
-			//$checkrow = $wpdb->get_var( 'SELECT id FROM '.$table_name.' WHERE reviewer_name = "'.$reviewer_name.'" AND (review_length = "'.$review_length.'" OR created_time_stamp = "'.$created_time_stamp.'")' );
-			
-			$checkrow = $wpdb->get_var( "SELECT id FROM ".$table_name." WHERE reviewer_name = '".$reviewer_name."' AND (review_length = '".$review_length."' OR created_time_stamp = '".$created_time_stamp."')" );
+			// SECURITY FIX: Use prepared statement to prevent SQL injection
+			$checkrow = $wpdb->get_var( $wpdb->prepare(
+				"SELECT id FROM ".$table_name." WHERE reviewer_name = %s AND (review_length = %d OR created_time_stamp = %d)",
+				$reviewer_name,
+				$review_length,
+				$created_time_stamp
+			) );
 			
 			//echo $wpdb->last_result;
 			//echo "<br>here<br>";
@@ -486,6 +496,12 @@ class WP_TripAdvisor_Review_Admin {
 	//error_reporting(E_ALL);
 		
 		check_ajax_referer('randomnoncestring', 'wptripadvisor_nonce');
+		
+		// SECURITY FIX: Verify user has permission to manage reviews
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error('Insufficient permissions');
+			wp_die();
+		}
 		
 		$rid = intval($_POST['reviewid']);
 		$myaction = $_POST['myaction'];
@@ -570,6 +586,13 @@ class WP_TripAdvisor_Review_Admin {
 	//error_reporting(E_ALL);
 		
 		check_ajax_referer('randomnoncestring', 'wptripadvisor_nonce');
+		
+		// SECURITY FIX: Verify user has permission to manage reviews
+		if (!current_user_can('manage_options')) {
+			wp_send_json_error('Insufficient permissions');
+			wp_die();
+		}
+		
 		$filtertext = htmlentities($_POST['filtertext']);
 		$filterrating = htmlentities($_POST['filterrating']);
 		$filterrating = intval($filterrating);

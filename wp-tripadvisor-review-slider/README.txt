@@ -4,7 +4,7 @@ Donate link: http://ljapps.com/
 Tags: TripAdvisor, reviews, testimonials, tripadvisor reviews, tripadvisor slider
 Requires at least: 3.0.1
 Tested up to: 6.9
-Stable tag: 14.1
+Stable tag: 14.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -103,6 +103,8 @@ We are always looking for features to add. Just post on the support forum or con
 7. Create as many templates as you like.
 
 == Changelog ==
+= 14.2 =
+* Small security fix.
 = 14.1 =
 * bug fix for linking to source url in review icon
 = 14.0 =

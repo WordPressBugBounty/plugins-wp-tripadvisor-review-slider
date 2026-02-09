@@ -131,14 +131,19 @@ class WP_TripAdvisor_Review_Public {
 		
 		wp_enqueue_script( $this->_token."_plublic", plugin_dir_url( __FILE__ ) . 'js/wprev-public.js', array( 'jquery' ), $this->version, false );
 
-
-		wp_localize_script($this->_token."_plublic", 'wprevpublicjs_script_vars', 
-						array(
-						'wpfb_nonce'=> wp_create_nonce('randomnoncestring'),
-						'wpfb_ajaxurl' => admin_url( 'admin-ajax.php' ),
-						'wprevpluginsurl' => wprev_trip_plugin_url
-						)
-					);
+		// SECURITY FIX: Only expose nonce to administrators who need it
+		// Public users don't need access to admin AJAX endpoints
+		$script_vars = array(
+			'wpfb_ajaxurl' => admin_url( 'admin-ajax.php' ),
+			'wprevpluginsurl' => wprev_trip_plugin_url
+		);
+		
+		// Only add nonce for users with manage_options capability
+		if (current_user_can('manage_options')) {
+			$script_vars['wpfb_nonce'] = wp_create_nonce('randomnoncestring');
+		}
+		
+		wp_localize_script($this->_token."_plublic", 'wprevpublicjs_script_vars', $script_vars);
 					
 					
 	}

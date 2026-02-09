@@ -182,16 +182,19 @@ _e('Hide certain reviews, download avatars, manually add reviews, save a CSV fil
 				
 				//user profile link
 				if( $reviewsrow->type=="TripAdvisor"){
-					$userpic = '<img style="-webkit-user-select: none;width: 50px;" src="'.$reviewsrow->userpic.'">';
+					// SECURITY FIX: Escape URL in src attribute
+					$userpic = '<img style="-webkit-user-select: none;width: 50px;" src="'.esc_url($reviewsrow->userpic).'">';
 					$editdellink = '';
 				}else {
-					$userpic = '<img style="-webkit-user-select: none;width: 50px;" src="'.$reviewsrow->userpic.'">';
+					// SECURITY FIX: Escape URL in src attribute
+					$userpic = '<img style="-webkit-user-select: none;width: 50px;" src="'.esc_url($reviewsrow->userpic).'">';
 					$editdellink = '<a title="Edit" href="'.$url_tempeditbtn.'"><span class="reveditbtn dashicons dashicons-edit"></span></a><span title="Delete" class="revdelbtn text_red dashicons dashicons-trash"></span>';
 					
 				}
 				$revtitle = '';
 				if($reviewsrow->review_title!=''){
-					$revtitle = '<b>'.$reviewsrow->review_title.'</b></br>';
+					// SECURITY FIX: Escape HTML in title
+					$revtitle = '<b>'.esc_html($reviewsrow->review_title).'</b></br>';
 				}
 				
 				$deleteurl = add_query_arg( 'deleterev', $reviewsrow->id,$currenturl );
@@ -213,18 +216,20 @@ _e('Hide certain reviews, download avatars, manually add reviews, save a CSV fil
 				
 	
 				// Build Type column with link if from_url exists
-				$typecolumn = $reviewsrow->type;
+				// SECURITY FIX: Escape HTML output
+				$typecolumn = esc_html($reviewsrow->type);
 				if(!empty($reviewsrow->from_url)){
-					$typecolumn = '<a href="'.esc_url($reviewsrow->from_url).'" target="_blank" rel="noopener noreferrer">'.$reviewsrow->type.'</a>';
+					$typecolumn = '<a href="'.esc_url($reviewsrow->from_url).'" target="_blank" rel="noopener noreferrer">'.esc_html($reviewsrow->type).'</a>';
 				}
 				
-				$html .= '<tr id="'.$reviewsrow->id.'">
+				// SECURITY FIX: Escape all output to prevent XSS
+				$html .= '<tr id="'.esc_attr($reviewsrow->id).'">
 						<th scope="col" class="manage-column"><a title="delete" alt="delete" href="'.$deleteurl.'">'.$deleteicon.'</a></th>
 						<th scope="col" class="manage-column">'.$userpic.'</th>
-						<th scope="col" class="manage-column">'.$reviewsrow->reviewer_name.'</th>
-						<th scope="col" class="manage-column">'.$reviewsrow->rating.'</th>
-						<th scope="col" class="manage-column">'.$revtitle.$reviewsrow->review_text.$mediahtml.'</th>
-						<th scope="col" class="manage-column">'.$reviewsrow->created_time.'</th>
+						<th scope="col" class="manage-column">'.esc_html($reviewsrow->reviewer_name).'</th>
+						<th scope="col" class="manage-column">'.esc_html($reviewsrow->rating).'</th>
+						<th scope="col" class="manage-column">'.$revtitle.wp_kses_post($reviewsrow->review_text).$mediahtml.'</th>
+						<th scope="col" class="manage-column">'.esc_html($reviewsrow->created_time).'</th>
 						<th scope="col" class="manage-column">'.$typecolumn.'</th>
 					</tr>';
 			}
