@@ -14,8 +14,8 @@
  * @wordpress-plugin
  * Plugin Name: 	  WP TripAdvisor Review Slider
  * Plugin URI:        https://wpreviewslider.com/
- * Description:       Allows you to easily display your TripAdvisor Business Page reviews in your Posts, Pages, and Widget areas.
- * Version:           14.2
+ * Description:       Display TripAdvisor reviews in a slider or grid. Lightweight plugin code with reviews saved locally on your server for super fast loading. Includes user photos from TripAdvisor (Trip Advisor) reviews.
+ * Version:           14.3
  * Author:            LJ Apps
  * Author URI:        http://ljapps.com/
  * License:           GPL-2.0+

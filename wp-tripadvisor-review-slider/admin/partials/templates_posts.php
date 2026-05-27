@@ -268,7 +268,7 @@ echo $dbmsg;
 					<th scope="col" width="30px" class="manage-column">'.__('ID', 'wp-tripadvisor-review-slider').'</th>
 					<th scope="col" class="manage-column">'.__('Title', 'wp-tripadvisor-review-slider').'</th>
 					<th scope="col" width="180px" class="manage-column">'.__('Date Created', 'wp-tripadvisor-review-slider').'</th>
-					<th scope="col" width="300px" class="manage-column">'.__('Action', 'wp-tripadvisor-review-slider').'</th>
+					<th scope="col" width="400px" class="manage-column">'.__('Action', 'wp-tripadvisor-review-slider').'</th>
 				</tr>
 				</thead>
 			<tbody id="review_list">';

@@ -1,48 +1,51 @@
 === WP TripAdvisor Review Slider ===
 Contributors: jgwhite33
 Donate link: http://ljapps.com/
-Tags: TripAdvisor, reviews, testimonials, tripadvisor reviews, tripadvisor slider
+Tags: tripadvisor reviews, social proof, testimonial slider, hotel reviews, trip advisor
 Requires at least: 3.0.1
-Tested up to: 6.9
-Stable tag: 14.2
+Tested up to: 7.0
+Stable tag: 14.3
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Create a TripAdvisor review slider! Now with User Images! Easily display your TripAdvisor reviews in your Posts, Pages, and Widget areas!
+Display TripAdvisor reviews in a slider or grid. Lightweight plugin code with reviews saved locally on your server for super fast loading. Includes user photos from TripAdvisor (Trip Advisor) reviews.
 
 == Description ==
-Easily display your TripAdvisor reviews and user photos on your WordPress site! Check the video below to see how you can get TripAdvisor reviews showing in under 2 minutes!
 
-Show TripAdvisor reviews on your site with a Shortcode or Widget! Let's face it, no one really trusts testimonials unless they can verify the source. When they see this TripAvisor testimonial slider they will know the reviews are coming from TripAdvisor. Each review has a TripAvisor icon right on the review.
+Display TripAdvisor Reviews on Your WordPress Site in Under 2 Minutes.
 
-This is a great way to increase SEO while building user confidence! You work hard for your 5 star TripAdvisor reviews, now you can easily display them on your WordPress site in a Post, Page, or Widget!
+This plugin is built to be lightweight and fast. It downloads your TripAdvisor reviews once and stores them in your WordPress database on your own server. Your site serves those reviews locally instead of calling TripAdvisor on every page view — for super fast loading, better performance, and a smoother visitor experience.
+
+Show TripAdvisor reviews on your site with a shortcode or widget. No one really trusts generic testimonials unless they can verify the source. When visitors see your TripAdvisor review slider, they know the reviews are coming from a trusted source. Each review can display the TripAdvisor icon for added trust and social proof.
+
+This is a great way to build customer confidence and boost your SEO. You work hard for your 5-star TripAdvisor reviews — now you can easily display them on your WordPress site in a post, page, or widget.
 
 Here's a quick video demonstration of adding TripAdvisor reviews in less than 2 minutes!
 
 [youtube https://youtu.be/butOAcKCOw0]
 
-If you have any sort of travel business you know how important TripAdvisor reviews can be. It's one of the top review sites people use when researching hotels, restaurants, things to do, tours and tickets, etc... If you have a good rating on TripAdvisor, it's a good idea to display your best reviews on your website. By proving to prospective customers that you have a good reputation from an independent site like TripAdvisor, you can increase social proof and build customer confidence which leads to more sales.
+If you have any sort of travel, hospitality, or tourism business, you know how important TripAdvisor reviews can be. It's one of the top review sites people use when researching hotels, restaurants, attractions, tours, and tickets. If you have a good rating on TripAdvisor (Trip Advisor), displaying your best reviews on your website helps prove your reputation comes from an independent source.
 
-If you don't have any TripAdvisor reviews, don't worry it's pretty easy to get going. More than likely TripAdvisor already has your business on their site. All you have to do is claim it. If it isn't then you can easily submit it. After you have it listed, just reach out to your past customers and ask for a review on TripAdvisor.
+Download your reviews manually whenever you want. The **Pro version** can automatically check for new TripAdvisor reviews on a daily schedule.
 
-Some of the Features:
+### Feature List:
 
-* Created and supported by the developer based in the US.
-* Sliders are awesome! Now you can easily create multiple sliders with your TripAdvisor reviews.
-* Don't like sliders? No worries, you can easily display a grid or rows.
-* Filter out bad reviews by rating value.
-* Mobile friendly responsive design.
-* Download your newest 10 TripAdvisor reviews and display in a Post or Page with a shortcode or template code.
-* The plugin automatically checks for new reviews every day.
-* Add a TripAdvisor slider as a widget as well! 
-* Create multiple templates for different parts of your site!
-* Each template can be customized and you can even add Custom CSS.
-* Template display options like:  border radius, show/hide date, show/hide star rating, background and text colors.
-* Hide the reviews that don't have any text.
-* Sort the reviews randomly or by newest.
-* Show mulitple TripAdvisor reviews per a row and even have mulitiple rows.
+* Lightweight plugin code designed for speed — no bloated scripts slowing down your site.
+* Download TripAdvisor reviews and securely store them on your server for fast local loading.
+* Create an engaging slider — like an image slider, but with TripAdvisor reviews.
+* Prefer a grid or list? Display reviews in a responsive layout instead of a slider.
+* Download and display user-added review photos.
+* Filter reviews by rating to hide low-star reviews.
+* Mobile-friendly responsive design.
+* Add a TripAdvisor slider as a widget.
+* Create multiple templates for different parts of your site.
+* Customize templates with border radius, colors, show/hide stars and dates, and custom CSS.
+* Hide reviews that do not include text.
+* Sort reviews randomly or by newest.
+* Show multiple TripAdvisor reviews per row with multiple rows.
+* Display reviews using a shortcode, template function, or widget.
 
-I personally support all of my plugins and appreciate every customer. If you have any questions don't hesitate to ask!
+I personally support all of my plugins and appreciate every customer. If you have any questions, don't hesitate to ask!
 
 Check out our other free versions!
 [Facebook](https://wordpress.org/plugins/wp-facebook-reviews/)
@@ -55,6 +58,7 @@ Check out our other free versions!
 [Upgrade to Pro for More Features:](https://wpreviewslider.com/)
 
 * Download all your reviews, not just the latest ones!
+* Set a cron job to automatically check for new TripAdvisor reviews once a day.
 * Download and display reviews from multiple TripAdvisor locations!
 * Analyze your reviews with cool charts and graphs. 
 * Super fast support through email and a forum built in to the plugin.
@@ -81,11 +85,35 @@ Check out our other free versions!
 
 == Installation ==
 
-1. Upload `wp-tripadvisor-reviews` folder to the `/wp-content/plugins/` directory
+1. Upload the plugin folder to the `/wp-content/plugins/` directory
 2. Activate the plugin through the 'Plugins' menu in WordPress
-3. Look for the WP TA Reviews menu item in your admin.
+3. Look for the **WP TripAdvisor** menu item in your admin.
 
 == Frequently Asked Questions ==
+
+= Are reviews stored on my server? =
+
+Yes. After you download reviews from TripAdvisor, they are saved in your WordPress database on your own server. Your site displays those stored reviews locally instead of loading them from TripAdvisor on every page view. Combined with lightweight plugin code, this helps your pages load super fast.
+
+= How do I find my TripAdvisor URL? =
+
+Simply go to TripAdvisor, find your business page, and copy the URL from your browser's address bar. Paste this into the plugin's "Get TripAdvisor Reviews" page.
+
+= Does this plugin update TripAdvisor reviews automatically? =
+
+Not in the free version. You download reviews manually when you want to update them. The Pro version includes a cron job option to automatically check for new TripAdvisor reviews once a day.
+
+= Can I display TripAdvisor review photos? =
+
+Yes. You can download and display user-added photos from TripAdvisor reviews. Photos can open in a lightbox when clicked.
+
+= Can I filter out low-star reviews? =
+
+Yes. You can filter reviews by rating so only the reviews you want to show are displayed.
+
+= Can I use a slider and a grid? =
+
+Yes. You can display TripAdvisor reviews in a slider, grid, or list layout using customizable templates.
 
 = How do I request a new feature? =
 
@@ -103,6 +131,8 @@ We are always looking for features to add. Just post on the support forum or con
 7. Create as many templates as you like.
 
 == Changelog ==
+= 14.3 =
+* Updated admin styling for WordPress 7.0.
 = 14.2 =
 * Small security fix.
 = 14.1 =
