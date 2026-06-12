@@ -652,23 +652,21 @@ class WP_TripAdvisor_Review_Admin {
 			
 		//check to see if looking for previously selected only
 		if (is_array($curselrevs)){
-			$query = "SELECT * FROM ".$table_name." WHERE id IN (";
-			//loop array and add to query
-			$n=1;
-			foreach ($curselrevs as $value) {
-				if($value!=""){
-					if(count($curselrevs)==$n){
-						$query = $query." $value";
-					} else {
-						$query = $query." $value,";
-					}
-				}
-				$n++;
-			}
-			$query = $query.")";
-			//echo $query ;
+			// SECURITY FIX: cast all selected ids to integers and use prepared
+			// statement placeholders to prevent SQL injection via curselrevs[].
+			$ids = array_map('intval', $curselrevs);
+			$ids = array_values(array_filter($ids, function($id){ return $id > 0; }));
 
-			$reviewsrows = $wpdb->get_results($query);
+			if (!empty($ids)) {
+				$placeholders = implode(',', array_fill(0, count($ids), '%d'));
+				$query = $wpdb->prepare(
+					"SELECT * FROM ".$table_name." WHERE id IN ($placeholders)",
+					$ids
+				);
+				$reviewsrows = $wpdb->get_results($query);
+			} else {
+				$reviewsrows = array();
+			}
 			$hidepagination = true;
 			$hidesearch = true;
 		} else {
@@ -676,10 +674,14 @@ class WP_TripAdvisor_Review_Admin {
 
 			//if filtertext set then use different query
 			if($filtertext!=""){
-				$reviewsrows = $wpdb->get_results("SELECT * FROM ".$table_name."
-					WHERE (reviewer_name LIKE '%".$filtertext."%' or review_text LIKE '%".$filtertext."%') AND ".$filterratingtext."
+				// SECURITY FIX: escape LIKE wildcards and bind the search term
+				// as a prepared parameter to prevent SQL injection via filtertext.
+				$like = '%' . $wpdb->esc_like($filtertext) . '%';
+				$reviewsrows = $wpdb->get_results(
+					$wpdb->prepare("SELECT * FROM ".$table_name."
+					WHERE (reviewer_name LIKE %s or review_text LIKE %s) AND ".$filterratingtext."
 					ORDER BY ".$sorttable." ".$sortdir." 
-					LIMIT ".$tablelimit." "
+					LIMIT ".$tablelimit." ", $like, $like)
 				);
 				$hidepagination = true;
 			} else {

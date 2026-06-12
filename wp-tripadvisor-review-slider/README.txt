@@ -4,7 +4,7 @@ Donate link: http://ljapps.com/
 Tags: tripadvisor reviews, social proof, testimonial slider, hotel reviews, trip advisor
 Requires at least: 3.0.1
 Tested up to: 7.0
-Stable tag: 14.3
+Stable tag: 14.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -131,6 +131,8 @@ We are always looking for features to add. Just post on the support forum or con
 7. Create as many templates as you like.
 
 == Changelog ==
+= 14.4 =
+* Security fix for SQL injection in admin review search.
 = 14.3 =
 * Updated admin styling for WordPress 7.0.
 = 14.2 =
