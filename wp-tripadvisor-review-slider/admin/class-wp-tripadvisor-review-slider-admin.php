@@ -33,6 +33,12 @@ class WP_TripAdvisor_Review_Admin {
 	private $_token;
 	public $errormsg;
 	/**
+	 * Last crawl server payload (temporary debug for Download Reviews).
+	 *
+	 * @var array|null
+	 */
+	public $last_crawl_debug = null;
+	/**
 	 * The version of this plugin.
 	 *
 	 * @since    1.0.0
@@ -91,8 +97,10 @@ class WP_TripAdvisor_Review_Admin {
 			}
 			//load template styles for wp_tripadvisor-templates_posts page
 			if($_GET['page']=="wp_tripadvisor-templates_posts"|| $_GET['page']=="wp_tripadvisor-get_pro" || $_GET['page']=="wp_tripadvisor-welcome"){
-				//enque template styles for preview
-				wp_enqueue_style( $this->_token."_style1", plugin_dir_url(dirname(__FILE__)) . 'public/css/wprev-public_template1.css', array(), $this->version, 'all' );
+				// Same combined public CSS as the front end (template styles, media thumbs, unslider arrows/dots).
+				wp_enqueue_style( $this->_token."_allcss", plugin_dir_url(dirname(__FILE__)) . 'public/css/wptripadvisor_all.css', array(), $this->version, 'all' );
+				// Lity for review media lightbox in template preview.
+				wp_enqueue_style( $this->_token."_lity", plugin_dir_url(dirname(__FILE__)) . 'public/css/lity.min.css', array(), $this->version, 'all' );
 			}
 			
 					//review list
@@ -156,10 +164,19 @@ class WP_TripAdvisor_Review_Admin {
 			if($_GET['page']=="wp_tripadvisor-reviews"){
 				//admin js
 				wp_enqueue_script('wptripadvisor_review_list_page-js', plugin_dir_url( __FILE__ ) . 'js/wptripadvisor_review_list_page.js', array( 'jquery','media-upload','thickbox' ), $this->version, false );
+
+				global $wpdb;
+				$reviews_table_name = $wpdb->prefix . 'wptripadvisor_reviews';
+				$pagenamearray = $wpdb->get_col( "SELECT pagename FROM {$reviews_table_name} WHERE pagename != '' GROUP BY pagename" );
+				if ( ! is_array( $pagenamearray ) ) {
+					$pagenamearray = array();
+				}
+
 				//used for ajax
 				wp_localize_script('wptripadvisor_review_list_page-js', 'adminjs_script_vars', 
 					array(
-					'wptripadvisor_nonce'=> wp_create_nonce('randomnoncestring')
+					'wptripadvisor_nonce'=> wp_create_nonce('randomnoncestring'),
+					'pagenamearray' => wp_json_encode( $pagenamearray ),
 					)
 				);
 				
@@ -196,7 +213,13 @@ class WP_TripAdvisor_Review_Admin {
 				
 				//add public script for preview
 	
+				wp_enqueue_script( $this->_token."_unslider-min", plugin_dir_url(dirname(__FILE__)) . 'public/js/wprs-unslider-swipe.js', array( 'jquery' ), $this->version, false );
+				wp_enqueue_script( $this->_token."_lity", plugin_dir_url(dirname(__FILE__)) . 'public/js/lity.min.js', array( 'jquery' ), $this->version, false );
 				wp_enqueue_script( $this->_token."_plublic", plugin_dir_url(dirname(__FILE__)) . 'public/js/wprev-public.js', array( 'jquery' ), $this->version, false );
+				wp_localize_script($this->_token."_plublic", 'wprevpublicjs_script_vars', array(
+					'wprevplugin_url' => wprev_trip_plugin_url,
+					'wprevpluginsurl' => wprev_trip_plugin_url
+				));
 
 			}
 		}
@@ -779,17 +802,266 @@ class WP_TripAdvisor_Review_Admin {
 	
 
 	/**
-	 * download tripadvisor reviews when clicking the save button on TripAdvisor page
+	 * Legacy hook: settings-updated no longer triggers a full download.
+	 * Downloads are per-source via AJAX.
+	 *
 	 * @access  public
 	 * @since   1.0.0
 	 * @return  void
-	 */	
+	 */
 	public function wptripadvisor_download_tripadvisor() {
-      global $pagenow;
-      if (isset($_GET['settings-updated']) && $pagenow=='admin.php' && current_user_can('export') && $_GET['page']=='wp_tripadvisor-get_tripadvisor') {
-		$this->wptripadvisor_download_tripadvisor_master();
-      }
-    }
+		// Intentionally empty — multi-source AJAX download replaced Save & Download.
+	}
+
+	/**
+	 * Get saved TripAdvisor crawl sources, migrating the legacy single URL if needed.
+	 *
+	 * @return array
+	 */
+	public function wptripadvisor_get_crawls() {
+		$raw = get_option( 'wprev_tripadvisor_crawls', 'not-exists' );
+		if ( 'not-exists' === $raw ) {
+			$crawls = array();
+			update_option( 'wprev_tripadvisor_crawls', wp_json_encode( $crawls ) );
+		} else {
+			$crawls = json_decode( $raw, true );
+			if ( ! is_array( $crawls ) ) {
+				$crawls = array();
+			}
+		}
+
+		// Migrate legacy single tripadvisor_business_url into crawls.
+		$options = get_option( 'wptripadvisor_tripadvisor_settings' );
+		if ( is_array( $options ) && ! empty( $options['tripadvisor_business_url'] ) ) {
+			$url = esc_url_raw( trim( $options['tripadvisor_business_url'] ) );
+			if ( $url && filter_var( $url, FILTER_VALIDATE_URL ) ) {
+				$pageid = $this->wptripadvisor_extract_pageid_from_url( $url );
+				if ( $pageid && ! isset( $crawls[ $pageid ] ) ) {
+					$crawls[ $pageid ] = array(
+						'pageid'       => $pageid,
+						'businessname' => $this->wptripadvisor_extract_businessname_from_url( $url ),
+						'url'          => $url,
+						'avg'          => '',
+						'total'        => '',
+					);
+					update_option( 'wprev_tripadvisor_crawls', wp_json_encode( $crawls ) );
+				}
+			}
+		}
+
+		return $crawls;
+	}
+
+	/**
+	 * Persist crawls option and keep legacy tripadvisor_business_url in sync.
+	 *
+	 * @param array $crawls Sources keyed by pageid.
+	 */
+	public function wptripadvisor_save_crawls( $crawls ) {
+		if ( ! is_array( $crawls ) ) {
+			$crawls = array();
+		}
+		update_option( 'wprev_tripadvisor_crawls', wp_json_encode( $crawls ) );
+
+		// Keep first source URL in legacy option for older template link fallbacks.
+		$options = get_option( 'wptripadvisor_tripadvisor_settings' );
+		if ( ! is_array( $options ) ) {
+			$options = array();
+		}
+		$first_url = '';
+		foreach ( $crawls as $source ) {
+			if ( is_array( $source ) && ! empty( $source['url'] ) ) {
+				$first_url = $source['url'];
+				break;
+			}
+		}
+		$options['tripadvisor_business_url'] = $first_url;
+		update_option( 'wptripadvisor_tripadvisor_settings', $options );
+	}
+
+	/**
+	 * Extract TripAdvisor location id (d########) from a business URL.
+	 *
+	 * @param string $url TripAdvisor URL.
+	 * @return string
+	 */
+	public function wptripadvisor_extract_pageid_from_url( $url ) {
+		$url = strtok( $url, '?' );
+		$url = preg_replace( '/#REVIEWS$/i', '', $url );
+		if ( preg_match( '/-d(\d+)/i', $url, $m ) ) {
+			return 'd' . $m[1];
+		}
+		$path = wp_parse_url( $url, PHP_URL_PATH );
+		if ( $path ) {
+			$base = basename( $path, '.html' );
+			if ( $base ) {
+				return sanitize_title( $base );
+			}
+		}
+		return '';
+	}
+
+	/**
+	 * Best-effort business name from TripAdvisor URL slug.
+	 *
+	 * @param string $url TripAdvisor URL.
+	 * @return string
+	 */
+	public function wptripadvisor_extract_businessname_from_url( $url ) {
+		if ( preg_match( '/-Reviews-([A-Za-z0-9_]+)/', $url, $m ) ) {
+			return str_replace( '_', ' ', $m[1] );
+		}
+		$path = wp_parse_url( $url, PHP_URL_PATH );
+		if ( $path ) {
+			return str_replace( '_', ' ', basename( $path, '.html' ) );
+		}
+		return 'TripAdvisor Business';
+	}
+
+	/**
+	 * Build one source table row HTML for AJAX add.
+	 *
+	 * @param string $pageid Page id.
+	 * @param array  $source Source data.
+	 * @return string
+	 */
+	public function wptripadvisor_source_row_html( $pageid, $source ) {
+		$bname     = isset( $source['businessname'] ) ? $source['businessname'] : '';
+		$url       = isset( $source['url'] ) ? $source['url'] : '';
+		$avg       = isset( $source['avg'] ) ? $source['avg'] : '';
+		$total     = isset( $source['total'] ) ? $source['total'] : '';
+		$avg_total = ( $avg !== '' || $total !== '' ) ? esc_html( $avg ) . ' / ' . esc_html( $total ) : '—';
+		$del_url   = wp_nonce_url(
+			admin_url( 'admin.php?page=wp_tripadvisor-get_tripadvisor&ract=del&pageid=' . rawurlencode( $pageid ) ),
+			'wptripadvisor_del_source'
+		);
+
+		ob_start();
+		?>
+		<tr data-pageid="<?php echo esc_attr( $pageid ); ?>">
+			<td>
+				<?php echo esc_html( $bname ); ?>
+				<?php if ( $url ) : ?>
+					<br><a href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer"><?php esc_html_e( 'View on TripAdvisor', 'wp-tripadvisor-review-slider' ); ?></a>
+				<?php endif; ?>
+			</td>
+			<td><?php echo esc_html( $pageid ); ?></td>
+			<td class="trip-source-stats"><?php echo $avg_total; ?></td>
+			<td>
+				<button type="button" class="button button-primary downloadrevs" data-pageid="<?php echo esc_attr( $pageid ); ?>"><?php esc_html_e( 'Download Reviews', 'wp-tripadvisor-review-slider' ); ?></button>
+				<span class="buttonloader2 wprevloader"></span>
+				<a class="button" style="color:#a00;" href="<?php echo esc_url( $del_url ); ?>" onclick="return confirm('<?php echo esc_js( __( 'Delete this source and its reviews?', 'wp-tripadvisor-review-slider' ) ); ?>');"><?php esc_html_e( 'Delete', 'wp-tripadvisor-review-slider' ); ?></a>
+				<span class="trip-source-msg"></span>
+			</td>
+		</tr>
+		<?php
+		return ob_get_clean();
+	}
+
+	/**
+	 * Delete a source, its reviews, and averages row.
+	 *
+	 * @param string $pageid Page id.
+	 */
+	public function wptripadvisor_delete_source( $pageid ) {
+		$pageid = sanitize_text_field( $pageid );
+		if ( $pageid === '' ) {
+			return;
+		}
+		$crawls = $this->wptripadvisor_get_crawls();
+		unset( $crawls[ $pageid ] );
+		$this->wptripadvisor_save_crawls( $crawls );
+
+		global $wpdb;
+		$wpdb->delete( $wpdb->prefix . 'wptripadvisor_reviews', array( 'pageid' => $pageid ) );
+		$wpdb->delete( $wpdb->prefix . 'wptripadvisor_total_averages', array( 'btp_id' => $pageid ) );
+	}
+
+	/**
+	 * AJAX: add a TripAdvisor source URL.
+	 */
+	public function wptripadvisor_ajax_add_source() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			echo wp_json_encode( array( 'ack' => 'error', 'ackmsg' => 'Insufficient permissions.' ) );
+			wp_die();
+		}
+		check_ajax_referer( 'randomnoncestring', 'wptripadvisor_nonce' );
+
+		$url  = isset( $_POST['tripadvisor_url'] ) ? esc_url_raw( trim( wp_unslash( $_POST['tripadvisor_url'] ) ) ) : '';
+		$name = isset( $_POST['businessname'] ) ? sanitize_text_field( wp_unslash( $_POST['businessname'] ) ) : '';
+
+		if ( ! $url || ! filter_var( $url, FILTER_VALIDATE_URL ) ) {
+			echo wp_json_encode( array( 'ack' => 'error', 'ackmsg' => __( 'Please enter a valid TripAdvisor URL.', 'wp-tripadvisor-review-slider' ) ) );
+			wp_die();
+		}
+		if ( stripos( $url, 'tripadvisor.' ) === false ) {
+			echo wp_json_encode( array( 'ack' => 'error', 'ackmsg' => __( 'URL must be a TripAdvisor business page.', 'wp-tripadvisor-review-slider' ) ) );
+			wp_die();
+		}
+
+		$pageid = $this->wptripadvisor_extract_pageid_from_url( $url );
+		if ( $pageid === '' ) {
+			echo wp_json_encode( array( 'ack' => 'error', 'ackmsg' => __( 'Could not determine a page ID from that URL.', 'wp-tripadvisor-review-slider' ) ) );
+			wp_die();
+		}
+
+		$crawls = $this->wptripadvisor_get_crawls();
+		if ( isset( $crawls[ $pageid ] ) ) {
+			echo wp_json_encode( array( 'ack' => 'error', 'ackmsg' => __( 'That source is already added.', 'wp-tripadvisor-review-slider' ) ) );
+			wp_die();
+		}
+
+		if ( $name === '' ) {
+			$name = $this->wptripadvisor_extract_businessname_from_url( $url );
+		}
+
+		$source = array(
+			'pageid'       => $pageid,
+			'businessname' => $name,
+			'url'          => strtok( $url, '?' ),
+			'avg'          => '',
+			'total'        => '',
+		);
+		$crawls[ $pageid ] = $source;
+		$this->wptripadvisor_save_crawls( $crawls );
+
+		echo wp_json_encode(
+			array(
+				'ack'     => 'success',
+				'ackmsg'  => __( 'Source added. Click Download Reviews to fetch reviews.', 'wp-tripadvisor-review-slider' ),
+				'pageid'  => $pageid,
+				'row_html'=> $this->wptripadvisor_source_row_html( $pageid, $source ),
+			)
+		);
+		wp_die();
+	}
+
+	/**
+	 * AJAX: download reviews for one saved source.
+	 */
+	public function wptripadvisor_ajax_download_source() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			echo wp_json_encode( array( 'ack' => 'error', 'ackmsg' => 'Insufficient permissions.' ) );
+			wp_die();
+		}
+		check_ajax_referer( 'randomnoncestring', 'wptripadvisor_nonce' );
+
+		$pageid = isset( $_POST['pageid'] ) ? sanitize_text_field( wp_unslash( $_POST['pageid'] ) ) : '';
+		$crawls = $this->wptripadvisor_get_crawls();
+		if ( $pageid === '' || empty( $crawls[ $pageid ]['url'] ) ) {
+			echo wp_json_encode( array( 'ack' => 'error', 'ackmsg' => __( 'Source not found. Add the URL again.', 'wp-tripadvisor-review-slider' ) ) );
+			wp_die();
+		}
+
+		$result = $this->wptripadvisor_download_one_source(
+			$crawls[ $pageid ]['url'],
+			$pageid,
+			isset( $crawls[ $pageid ]['businessname'] ) ? $crawls[ $pageid ]['businessname'] : ''
+		);
+
+		echo wp_json_encode( $result );
+		wp_die();
+	}
 	
 	
 	
@@ -1235,150 +1507,375 @@ class WP_TripAdvisor_Review_Admin {
 	
 	
 		/**
-	 * download tripadvisor reviews
+	 * Download reviews for all saved sources (cron / legacy).
+	 *
 	 * @access  public
 	 * @since   1.0.0
 	 * @return  void
-	 */	
-	 
+	 */
 	public function wptripadvisor_download_tripadvisor_master() {
-		ini_set('memory_limit','800M');
-		set_time_limit(80);
-		//make sure file get contents is turned on for this host
-		$errormsg ='';
-		$ShowUserReviews = false;
-		$HotelUserReviews = false;
-		$onfirstpage = false;
-		$attractionproductreviews=false;
-		$attractionreviews=false;
-		$totalinsert = 0;
-		
-		global $wpdb;
-		$table_name = $wpdb->prefix . 'wptripadvisor_reviews';
-		$options = get_option('wptripadvisor_tripadvisor_settings');
-		
-		$tempurl = trim($options['tripadvisor_business_url']);
-
-		$type='TripAdvisor';
-		$listedurl=$tempurl;
-		$pagenum=1;
-		$perpage='';
-		$savedpageid='';
-		$nhful='';
-		$fid='';
-		$blockstoinsert='';
-		$nextpageurl='';
-		$iscron='yes'; //we do this because we are not running it with ajax like the pro version.
-		
-		//make sure you have valid url, if not display message
-		if (filter_var($tempurl, FILTER_VALIDATE_URL)) {
-				
-
-			$reviewscrawl = $this->wprpfree_getapps_getrevs_page_tripadvisor($type,$listedurl,$pagenum,$perpage,$savedpageid,$nhful,$fid,$blockstoinsert,$nextpageurl,$iscron);
-			
-			$pagename = '';
-			
-			//print_r($reviewscrawl);
-			//die();
-			$reviews = [];	
-			foreach ( $reviewscrawl['reviews'] as $review ){
-				
-				//print_r($review);
-				//die();
-				$rtext = $review['review_text'];
-				$review_length = str_word_count($rtext);
-				
-				$timestamp = $this->myStrtotime($review['updated']);
-				//echo $timestamp."<br>";
-				$unixtimestamp = $timestamp;
-				$timestamp = date("Y-m-d H:i:s", $timestamp);
-								
-								
-				$checkrow = $wpdb->get_var( "SELECT id FROM ".$table_name." WHERE reviewer_name = '".$review['reviewer_name']."' AND (review_length = '".$review_length."' OR created_time = '".$timestamp."')" );
-		
-				if( empty( $checkrow ) ){
-						$reviewindb = 'no';
-				} else {
-						$reviewindb = 'yes';
-				}
-				
-				if(isset($userimage) && $userimage!=''){
-					$foundavatar = true;
-				}
-				
-				if(!isset($review['userpic'])){
-					$review['userpic'] = "";
-				}
-				
-				if( $reviewindb == 'no' ){
-					$reviews[] = [
-							'reviewer_name' => $review['reviewer_name'],
-							'pagename' => trim($pagename),
-							'userpic' => $review['userpic'],
-							'rating' => $review['rating'],
-							'created_time' => $timestamp,
-							'created_time_stamp' => $unixtimestamp,
-							'review_text' => trim($review['review_text']),
-							'hide' => '',
-							'review_length' => $review_length,
-							'type' => 'TripAdvisor',
-							'review_title' => $review['review_title'],
-							'mediaurlsarrayjson' => $review['mediaurlsarrayjson'],
-							'from_url' => isset($review['from_url']) ? $review['from_url'] : '',
-					];
-				}
+		$crawls = $this->wptripadvisor_get_crawls();
+		$messages = array();
+		foreach ( $crawls as $pageid => $source ) {
+			if ( ! is_array( $source ) || empty( $source['url'] ) ) {
+				continue;
 			}
-								
-							
-
-			//remove duplicates
-			//remove duplicates
-			$reviewtexts = [];
-			$insertreviews = [];
-			
-			foreach ( $reviews as $stat ){
-				if (!in_array($stat['review_text'], $reviewtexts)) {
-					$insertreviews[] = $stat;
-				}
-				$reviewtexts[] = $stat['review_text'];
+			$result = $this->wptripadvisor_download_one_source(
+				$source['url'],
+				$pageid,
+				isset( $source['businessname'] ) ? $source['businessname'] : ''
+			);
+			if ( ! empty( $result['ackmsg'] ) ) {
+				$messages[] = $result['ackmsg'];
 			}
-			//echo "<br><br>";
-			//print_r($insertreviews);
-			//print("<pre>".print_r($insertreviews,true)."</pre>");
-			
-		
-			//add all new tripadvisor reviews to db
-			$insertnum=0;
-			
-			foreach ( $insertreviews as $stat ){
-				//print_r($stat); 
-				$insertnum = $wpdb->insert( $table_name, $stat );
-				//echo "<br><br>in:";
-				//echo $insertnum;
-				//echo "<br><br>";
-				$totalinsert = $totalinsert + $insertnum;
-			}
+		}
+		if ( ! empty( $messages ) ) {
+			$this->errormsg = implode( ' ', $messages );
+		}
+	}
 
-			
-			//reviews added to db
-			if($totalinsert>0 && $totalinsert!='0'){
-				$errormsg = $errormsg . $totalinsert. ' TripAdvisor reviews downloaded. They should now be on the Review List page.';
-				$this->errormsg = $errormsg;
-			} else {
-				print_r($insertreviews);
-				$errormsg = $errormsg . ' Unable to find any new reviews. Please try again or contact support.';
-				$this->errormsg = $errormsg;
-			}
+	/**
+	 * Crawl one TripAdvisor URL, insert reviews, and store source avg/total.
+	 *
+	 * @param string $tempurl  Business URL.
+	 * @param string $pageid   Stable page id (d########).
+	 * @param string $pagename Business display name.
+	 * @return array
+	 */
+	public function wptripadvisor_download_one_source( $tempurl, $pageid = '', $pagename = '' ) {
+		ini_set( 'memory_limit', '800M' );
+		set_time_limit( 180 );
 
-			  
-		} else {
-			$errormsg = $errormsg . ' Please enter a valid URL.';
-			$this->errormsg = $errormsg;
+		$result = array(
+			'ack'    => 'success',
+			'ackmsg' => '',
+			'avg'    => '',
+			'total'  => '',
+		);
+
+		$tempurl = trim( $tempurl );
+		if ( ! filter_var( $tempurl, FILTER_VALIDATE_URL ) ) {
+			$result['ack']    = 'error';
+			$result['ackmsg'] = __( 'Please enter a valid URL.', 'wp-tripadvisor-review-slider' );
+			return $result;
 		}
 
+		$tempurl = strtok( $tempurl, '?' );
+		$tempurl = preg_replace( '/#REVIEWS$/i', '', $tempurl );
+
+		if ( $pageid === '' ) {
+			$pageid = $this->wptripadvisor_extract_pageid_from_url( $tempurl );
+		}
+		if ( $pagename === '' ) {
+			$pagename = $this->wptripadvisor_extract_businessname_from_url( $tempurl );
+		}
+
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'wptripadvisor_reviews';
+		$totalinsert = 0;
+
+		$type           = 'TripAdvisor';
+		$listedurl      = $tempurl;
+		$pagenum        = 1;
+		$perpage        = '';
+		$savedpageid    = $pageid;
+		$nhful          = '';
+		$fid            = '';
+		$blockstoinsert = '';
+		$nextpageurl    = '';
+		// Manual downloads must use iscron=no. iscron=yes hits the crawl server's
+		// throttle and returns empty reviews immediately.
+		$iscron         = 'no';
+
+		// TripAdvisor often returns forceloop=yes + nextpageurl (ShowUserReviews) with no
+		// reviews on the first call. ShowUserReviews pages return ~5 reviews each, so keep
+		// following nextpageurl until we have at least 10 reviews (all TripAdvisor types).
+		$all_reviews     = array();
+		$source_avg      = '';
+		$source_total    = '';
+		$crawl_debug_log = array();
+		$min_reviews     = 10;
+		$max_loops       = 6;
+		$reviewscrawl    = null;
+
+		for ( $loop = 1; $loop <= $max_loops; $loop++ ) {
+			$reviewscrawl = $this->wprpfree_getapps_getrevs_page_tripadvisor( $type, $listedurl, $pagenum, $perpage, $savedpageid, $nhful, $fid, $blockstoinsert, $nextpageurl, $iscron );
+
+			if ( ! empty( $this->last_crawl_debug ) ) {
+				$crawl_debug_log[] = $this->last_crawl_debug;
+			}
+
+			if ( ! is_array( $reviewscrawl ) ) {
+				break;
+			}
+
+			if ( $source_avg === '' && ! empty( $reviewscrawl['avg'] ) ) {
+				$source_avg = $reviewscrawl['avg'];
+			}
+			if ( $source_total === '' && ! empty( $reviewscrawl['total'] ) ) {
+				$source_total = $reviewscrawl['total'];
+			}
+
+			if ( ! empty( $reviewscrawl['reviews'] ) && is_array( $reviewscrawl['reviews'] ) ) {
+				$all_reviews = array_merge( $all_reviews, $reviewscrawl['reviews'] );
+			}
+
+			$stoploop = isset( $reviewscrawl['stoploop'] ) ? $reviewscrawl['stoploop'] : '';
+			if ( $stoploop === 'stop' ) {
+				break;
+			}
+
+			$forceloop       = isset( $reviewscrawl['forceloop'] ) ? $reviewscrawl['forceloop'] : '';
+			$next_from_crawl = isset( $reviewscrawl['nextpageurl'] ) ? $reviewscrawl['nextpageurl'] : '';
+
+			// First restaurant/hotel/attraction page often only returns the ShowUserReviews link.
+			if ( $forceloop === 'yes' && $next_from_crawl !== '' ) {
+				$nextpageurl = $next_from_crawl;
+				$pagenum++;
+				continue;
+			}
+
+			// Keep paging until we have at least 10 reviews (Pro-style pagination, free cap).
+			if ( count( $all_reviews ) < $min_reviews && $next_from_crawl !== '' ) {
+				$nextpageurl = $next_from_crawl;
+				$pagenum++;
+				continue;
+			}
+
+			break;
+		}
+
+		// Free version: keep at most 10 reviews.
+		if ( count( $all_reviews ) > $min_reviews ) {
+			$all_reviews = array_slice( $all_reviews, 0, $min_reviews );
+		}
+
+		$result['crawl_debug'] = $crawl_debug_log;
+
+		if ( empty( $all_reviews ) ) {
+			$result['ack']    = 'error';
+			$result['ackmsg'] = __( 'Unable to find any reviews. Please try again or contact support.', 'wp-tripadvisor-review-slider' );
+			return $result;
+		}
+
+		// Normalize so insert logic below can use $reviewscrawl['reviews'].
+		$reviewscrawl            = is_array( $reviewscrawl ) ? $reviewscrawl : array();
+		$reviewscrawl['reviews'] = $all_reviews;
+		$reviewscrawl['avg']     = $source_avg;
+		$reviewscrawl['total']   = $source_total;
+
+		$result['avg']   = $source_avg;
+		$result['total'] = $source_total;
+
+		$reviews = array();
+		foreach ( $reviewscrawl['reviews'] as $review ) {
+			$rtext         = $review['review_text'];
+			$review_length = str_word_count( $rtext );
+			$timestamp     = $this->myStrtotime( $review['updated'] );
+			$unixtimestamp = $timestamp;
+			$timestamp     = date( 'Y-m-d H:i:s', $timestamp );
+
+			// Dedupe by name + length (+ pageid). Do not rely on date so edited dates
+			// cannot cause the same review to be re-inserted on download.
+			if ( $pageid !== '' ) {
+				$checkrow = $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT id FROM {$table_name} WHERE reviewer_name = %s AND review_length = %d AND pageid = %s",
+						$review['reviewer_name'],
+						$review_length,
+						$pageid
+					)
+				);
+			} else {
+				$checkrow = $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT id FROM {$table_name} WHERE reviewer_name = %s AND (review_length = %d OR created_time = %s)",
+						$review['reviewer_name'],
+						$review_length,
+						$timestamp
+					)
+				);
+			}
+
+			if ( ! empty( $checkrow ) ) {
+				continue;
+			}
+
+			if ( ! isset( $review['userpic'] ) ) {
+				$review['userpic'] = '';
+			}
+
+			$reviews[] = array(
+				'pageid'             => $pageid,
+				'pagename'           => trim( $pagename ),
+				'reviewer_name'      => $review['reviewer_name'],
+				'userpic'            => $review['userpic'],
+				'rating'             => $review['rating'],
+				'created_time'       => $timestamp,
+				'created_time_stamp' => $unixtimestamp,
+				'review_text'        => trim( $review['review_text'] ),
+				'hide'               => '',
+				'review_length'      => $review_length,
+				'type'               => 'TripAdvisor',
+				'review_title'       => $review['review_title'],
+				'mediaurlsarrayjson' => $review['mediaurlsarrayjson'],
+				'from_url'           => isset( $review['from_url'] ) ? $review['from_url'] : $listedurl,
+			);
+		}
+
+		$reviewtexts   = array();
+		$insertreviews = array();
+		foreach ( $reviews as $stat ) {
+			if ( ! in_array( $stat['review_text'], $reviewtexts, true ) ) {
+				$insertreviews[] = $stat;
+			}
+			$reviewtexts[] = $stat['review_text'];
+		}
+
+		foreach ( $insertreviews as $stat ) {
+			$insertnum    = $wpdb->insert( $table_name, $stat );
+			$totalinsert += (int) $insertnum;
+		}
+
+		// Persist source avg/total for badges.
+		if ( $pageid !== '' ) {
+			$this->updatetotalavgreviews( 'TripAdvisor', $pageid, $source_avg, $source_total, $pagename );
+
+			$crawls = $this->wptripadvisor_get_crawls();
+			if ( ! isset( $crawls[ $pageid ] ) ) {
+				$crawls[ $pageid ] = array(
+					'pageid'       => $pageid,
+					'businessname' => $pagename,
+					'url'          => $listedurl,
+				);
+			}
+			$crawls[ $pageid ]['avg']          = $source_avg;
+			$crawls[ $pageid ]['total']        = $source_total;
+			$crawls[ $pageid ]['businessname'] = $pagename;
+			$crawls[ $pageid ]['url']          = $listedurl;
+			$crawls[ $pageid ]['last_download'] = time();
+			$this->wptripadvisor_save_crawls( $crawls );
+		}
+
+		$numreturned = count( $reviewscrawl['reviews'] );
+		$result['ackmsg'] = sprintf(
+			/* translators: 1: reviews found, 2: new reviews inserted */
+			__( '%1$d reviews found. %2$d new reviews downloaded. Check the Review List page.', 'wp-tripadvisor-review-slider' ),
+			$numreturned,
+			$totalinsert
+		);
+		$this->errormsg = $result['ackmsg'];
+
+		return $result;
 	}
-	
-	
+
+	/**
+	 * Store source avg/total for badges (option + averages table).
+	 *
+	 * @param string $type     Review type.
+	 * @param string $pageid   Page id.
+	 * @param string $avg      Source average from crawler.
+	 * @param string $total    Source total from crawler.
+	 * @param string $pagename Business name.
+	 */
+	public function updatetotalavgreviews( $type, $pageid, $avg, $total, $pagename = '' ) {
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'wptripadvisor_reviews';
+		$avg        = str_replace( ',', '.', (string) $avg );
+		$option     = 'wptrip_total_avg_reviews';
+
+		$wppro_total_avg_reviews_array = get_option( $option );
+		if ( $wppro_total_avg_reviews_array ) {
+			$wppro_total_avg_reviews_array = json_decode( $wppro_total_avg_reviews_array, true );
+		}
+		if ( ! is_array( $wppro_total_avg_reviews_array ) ) {
+			$wppro_total_avg_reviews_array = array();
+		}
+
+		$ratingsarray = array();
+		$fbreviews    = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT rating, type FROM {$table_name} WHERE hide != %s AND pageid = %s",
+				'yes',
+				$pageid
+			)
+		);
+		$pagetype = $type;
+		foreach ( $fbreviews as $fbreview ) {
+			if ( $fbreview->rating > 0 ) {
+				$ratingsarray[] = (float) $fbreview->rating;
+			}
+			if ( ! empty( $fbreview->type ) ) {
+				$pagetype = $fbreview->type;
+			}
+		}
+
+		$avgdb   = 0;
+		$totaldb = 0;
+		if ( count( $ratingsarray ) > 0 ) {
+			$avgdb   = round( array_sum( $ratingsarray ) / count( $ratingsarray ), 3 );
+			$totaldb = count( $ratingsarray );
+		}
+
+		if ( ! isset( $wppro_total_avg_reviews_array[ $pageid ] ) ) {
+			$wppro_total_avg_reviews_array[ $pageid ] = array();
+		}
+		$wppro_total_avg_reviews_array[ $pageid ]['total_indb'] = $totaldb;
+		$wppro_total_avg_reviews_array[ $pageid ]['avg_indb']   = $avgdb;
+		if ( floatval( $avg ) > 0 ) {
+			$wppro_total_avg_reviews_array[ $pageid ]['avg'] = round( floatval( $avg ), 3 );
+		}
+		if ( intval( $total ) > 0 ) {
+			$wppro_total_avg_reviews_array[ $pageid ]['total'] = intval( $total );
+		}
+
+		update_option( $option, wp_json_encode( $wppro_total_avg_reviews_array, JSON_FORCE_OBJECT ) );
+
+		$valuearray = array(
+			'btp_id'     => $pageid,
+			'btp_name'   => $pagename,
+			'pagetype'   => $pagetype,
+			'total'      => isset( $wppro_total_avg_reviews_array[ $pageid ]['total'] ) ? $wppro_total_avg_reviews_array[ $pageid ]['total'] : '',
+			'total_indb' => $totaldb,
+			'avg'        => isset( $wppro_total_avg_reviews_array[ $pageid ]['avg'] ) ? $wppro_total_avg_reviews_array[ $pageid ]['avg'] : '',
+			'avg_indb'   => $avgdb,
+			'numr1'      => '',
+			'numr2'      => '',
+			'numr3'      => '',
+			'numr4'      => '',
+			'numr5'      => '',
+		);
+		$this->updatetotalavgreviewstableinsert( 'page', $valuearray );
+	}
+
+	/**
+	 * Insert/replace a row in wptripadvisor_total_averages.
+	 *
+	 * @param string $btp_type   page|template|badge.
+	 * @param array  $valuearray Row values.
+	 */
+	public function updatetotalavgreviewstableinsert( $btp_type, $valuearray ) {
+		global $wpdb;
+		$table_name_totalavg = $wpdb->prefix . 'wptripadvisor_total_averages';
+		$data                = array(
+			'btp_id'     => isset( $valuearray['btp_id'] ) ? $valuearray['btp_id'] : '',
+			'btp_name'   => isset( $valuearray['btp_name'] ) ? $valuearray['btp_name'] : '',
+			'btp_type'   => $btp_type,
+			'pagetype'   => isset( $valuearray['pagetype'] ) ? $valuearray['pagetype'] : '',
+			'total_indb' => isset( $valuearray['total_indb'] ) ? (string) $valuearray['total_indb'] : '',
+			'total'      => isset( $valuearray['total'] ) ? (string) $valuearray['total'] : '',
+			'avg_indb'   => isset( $valuearray['avg_indb'] ) ? (string) $valuearray['avg_indb'] : '',
+			'avg'        => isset( $valuearray['avg'] ) ? (string) $valuearray['avg'] : '',
+			'numr1'      => isset( $valuearray['numr1'] ) ? (string) $valuearray['numr1'] : '',
+			'numr2'      => isset( $valuearray['numr2'] ) ? (string) $valuearray['numr2'] : '',
+			'numr3'      => isset( $valuearray['numr3'] ) ? (string) $valuearray['numr3'] : '',
+			'numr4'      => isset( $valuearray['numr4'] ) ? (string) $valuearray['numr4'] : '',
+			'numr5'      => isset( $valuearray['numr5'] ) ? (string) $valuearray['numr5'] : '',
+		);
+		$format = array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' );
+		$wpdb->replace( $table_name_totalavg, $data, $format );
+	}
+
 	//Added 4/2/2024 using pro version to download reviews.
 	//for calling remote get and returning array of reviews to insert, calling Crawler now crawl.ljapps.com
 	public function wprpfree_getapps_getrevs_page_tripadvisor($type,$listedurl,$pagenum,$perpage,$savedpageid,$nhful,$fid,$blockstoinsert,$nextpageurl,$iscron){
@@ -1403,8 +1900,8 @@ class WP_TripAdvisor_Review_Admin {
 				}
 				$siteurl = urlencode(get_site_url());
 				
-				//scrapeurl
-				$tempurlval = 'https://crawl.ljapps.com/crawlrevs?rip='.$ip_server.'&surl='.$siteurl.'&scrapeurl='.$listedurl.'&stype=tripadvisor&nhful='.$nhful.'&locationtype=&scrapequery=&tempbusinessname=&pagenum='.$pagenum.'&nextpageurl='.$nextpageurl.'&iscron='.$iscron.'&sfp=free&nobot=1';
+				//scrapeurl — encode nextpageurl so ShowUserReviews links survive the query string
+				$tempurlval = 'https://crawl.ljapps.com/crawlrevs?rip='.$ip_server.'&surl='.$siteurl.'&scrapeurl='.urlencode($listedurl).'&stype=tripadvisor&nhful='.$nhful.'&locationtype=&scrapequery=&tempbusinessname=&pagenum='.$pagenum.'&nextpageurl='.urlencode($nextpageurl).'&iscron='.$iscron.'&sfp=free&nobot=1';
 				
 				//https://crawl.ljapps.com/crawlrevs?rip=127.0.0.1&surl=https%3A%2F%2Fwptest.ljapps.com&scrapeurl=https://www.tripadvisor.com/Hotel_Review-g7928511-d27689503-Reviews-Feridhoo_Beach_Villa-Feridhoo.html&stype=tripadvisor&sfp=pro&nhful=new&locationtype=&scrapequery=&tempbusinessname=&pagenum=1&nextpageurl=&iscron=yes&sfp=free&nobot=1
 				
@@ -1430,6 +1927,11 @@ class WP_TripAdvisor_Review_Admin {
 					//must have been an error
 					$results['ack'] ='error';
 					$results['ackmsg'] ='Error 0001a: trouble contacting crawling server with remote_get. Please try again or contact support. '.$response->get_error_message();
+					$results['crawl_debug'] = array(
+						'request_url' => $tempurlval,
+						'raw'         => '',
+						'error'       => is_wp_error( $response ) ? $response->get_error_message() : 'unknown',
+					);
 					$results = json_encode($results);
 					echo $results;
 					die();
@@ -1442,7 +1944,7 @@ class WP_TripAdvisor_Review_Admin {
 		//====================
 		if (strpos($serverresponse, "Please wait while your request is being verified") !== false || !isset($serverresponse) || $serverresponse==''  || strpos($serverresponse, "Access denied by Imunify360 bot-protection.") !== false || strpos($serverresponse, "415 Unsupported Media Type") !== false) {
 		   //this site is greylisted by imunify360 on cloudways, call backup digital ocean server
-		   $response = wp_remote_get( 'https://ocean.ljapps.com/crawlrevs.php?rip='.$ip_server.'&surl='.$siteurl.'&scrapeurl='.$listedurl.'&stype=tripadvisor&nhful='.$nhful.'&locationtype=&scrapequery=&tempbusinessname=&pagenum='.$pagenum.'&nextpageurl='.$nextpageurl.'&iscron='.$iscron.'&sfp=free&nobot=1', array( 'sslverify' => false, 'timeout' => 150 ) );
+		   $response = wp_remote_get( 'https://ocean.ljapps.com/crawlrevs.php?rip='.$ip_server.'&surl='.$siteurl.'&scrapeurl='.urlencode($listedurl).'&stype=tripadvisor&nhful='.$nhful.'&locationtype=&scrapequery=&tempbusinessname=&pagenum='.$pagenum.'&nextpageurl='.urlencode($nextpageurl).'&iscron='.$iscron.'&sfp=free&nobot=1', array( 'sslverify' => false, 'timeout' => 150 ) );
 			if ( is_array( $response ) && ! is_wp_error( $response ) ) {
 				$headers = $response['headers']; // array of http header lines
 				$serverresponse    = $response['body']; // use the content
@@ -1455,10 +1957,17 @@ class WP_TripAdvisor_Review_Admin {
 	
 	
 				$serverresponsearray = json_decode($serverresponse, true);
+				$this->last_crawl_debug = array(
+					'request_url' => $tempurlval,
+					'iscron'      => $iscron,
+					'raw'         => $serverresponse,
+					'parsed'      => $serverresponsearray,
+				);
 
 				if($serverresponse=='' || !is_array($serverresponsearray)){
 					$results['ack'] ='error';
 					$results['ackmsg'] ='Error 0001: trouble contacting crawling server. Please try again or contact support.';
+					$results['crawl_debug'] = $this->last_crawl_debug;
 					$results = json_encode($results);
 					echo $results;
 					die();
@@ -1467,6 +1976,7 @@ class WP_TripAdvisor_Review_Admin {
 				if($serverresponsearray['ack']=='error'){
 					$results['ack'] ='error';
 					$results['ackmsg'] ='Error 0002: '.$serverresponsearray['ackmessage'];
+					$results['crawl_debug'] = $this->last_crawl_debug;
 					$results = json_encode($results);
 					echo $results;
 					die();
@@ -1474,6 +1984,7 @@ class WP_TripAdvisor_Review_Admin {
 				if(!isset($serverresponsearray['result']) || !is_array($serverresponsearray['result'])){
 					$results['ack'] ='error';
 					$results['ackmsg'] ='Error 0002b: trouble finding reviews. Contact support with this error code and the search terms or place id you are using.';
+					$results['crawl_debug'] = $this->last_crawl_debug;
 					$results = json_encode($results);
 					echo $results;
 					die();
@@ -1482,6 +1993,7 @@ class WP_TripAdvisor_Review_Admin {
 				if($serverresponsearray['result']['ack']=='error'){
 					$results['ack'] ='error';
 					$results['ackmsg'] ='Error 0003: Please try again. '.$serverresponsearray['ackmessage'].' : '.$serverresponsearray['result']['ackmsg'];
+					$results['crawl_debug'] = $this->last_crawl_debug;
 					$results = json_encode($results);
 					echo $results;
 					die();
@@ -1499,6 +2011,7 @@ class WP_TripAdvisor_Review_Admin {
 					if(!isset($crawlerresultarray['reviews']) || !is_array($crawlerresultarray['reviews'])){
 						$results['ack'] ='error';
 						$results['ackmsg'] ='Error 0004 Trip: trouble finding reviews. Contact support with this error code and the search terms or place id you are using. ';
+						$results['crawl_debug'] = isset( $this->last_crawl_debug ) ? $this->last_crawl_debug : null;
 						$results = json_encode($results);
 						echo $results;
 						die();
@@ -2688,10 +3201,235 @@ class WP_TripAdvisor_Review_Admin {
 		
 		echo '<div><a href="admin.php?page=wp_tripadvisor-reviews">All Reviews</a> - <a href="https://wpreviewslider.com/" target="_blank">Go Pro For More Cool Features!</a></div>';
 	}
-	
-	
-	
 
-    
+	/**
+	 * Ajax: return rendered template HTML for preview.
+	 */
+	public function wptripadvisor_previewtemplate_ajax() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'Insufficient permissions' ) );
+			return;
+		}
+
+		$tid = isset( $_POST['tid'] ) ? absint( $_POST['tid'] ) : 0;
+		check_ajax_referer( 'randomnoncestring', 'wptripadvisor_nonce' );
+
+		$returnarray = $this->wptripadvisor_previewtemplate_ajax_get( $tid );
+		echo wp_json_encode( $returnarray );
+		die();
+	}
+
+	/**
+	 * Build preview HTML for a template id.
+	 *
+	 * @param int $tid Template id.
+	 * @return array
+	 */
+	public function wptripadvisor_previewtemplate_ajax_get( $tid ) {
+		$atts = array( 'tid' => $tid );
+		require_once plugin_dir_path( __DIR__ ) . 'public/class-wp-tripadvisor-review-slider-public.php';
+		$plugin_public_class = new WP_TripAdvisor_Review_Public( $this->get_token(), $this->get_version() );
+		$templatehtml        = $plugin_public_class->wptripadvisor_usetemplate_func( $atts, null );
+
+		return array(
+			'tid'          => $tid,
+			'ack'          => 'success',
+			'templatehtml' => $templatehtml,
+		);
+	}
+
+	/**
+	 * Ajax: save review template and return preview HTML.
+	 */
+	public function wptripadvisor_savetemplate_ajax() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'Insufficient permissions' ) );
+			return;
+		}
+
+		check_ajax_referer( 'randomnoncestring', 'wptripadvisor_nonce' );
+
+		$formdata  = isset( $_POST['data'] ) ? stripslashes( $_POST['data'] ) : '';
+		$formarray = json_decode( $formdata, true );
+		if ( ! is_array( $formarray ) ) {
+			echo wp_json_encode( array( 'ack' => 'error', 'ackmessage' => 'Invalid form data.' ) );
+			die();
+		}
+
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'wptripadvisor_post_templates';
+
+		$t_id               = isset( $formarray['edittid'] ) ? sanitize_text_field( $formarray['edittid'] ) : '';
+		$title              = isset( $formarray['wptripadvisor_template_title'] ) ? sanitize_text_field( $formarray['wptripadvisor_template_title'] ) : '';
+		$template_type      = isset( $formarray['wptripadvisor_template_type'] ) ? sanitize_text_field( $formarray['wptripadvisor_template_type'] ) : 'post';
+		$style              = isset( $formarray['wprevpro_template_style'] ) ? sanitize_text_field( $formarray['wprevpro_template_style'] ) : '1';
+		$display_num        = isset( $formarray['wptripadvisor_t_display_num'] ) ? sanitize_text_field( $formarray['wptripadvisor_t_display_num'] ) : '3';
+		$display_num_rows   = isset( $formarray['wptripadvisor_t_display_num_rows'] ) ? sanitize_text_field( $formarray['wptripadvisor_t_display_num_rows'] ) : '1';
+		$display_order      = isset( $formarray['wptripadvisor_t_display_order'] ) ? sanitize_text_field( $formarray['wptripadvisor_t_display_order'] ) : 'newest';
+		$hide_no_text       = isset( $formarray['wptripadvisor_t_hidenotext'] ) ? sanitize_text_field( $formarray['wptripadvisor_t_hidenotext'] ) : 'no';
+		$template_css       = isset( $formarray['wptripadvisor_template_css'] ) ? sanitize_textarea_field( $formarray['wptripadvisor_template_css'] ) : '';
+		$createslider       = isset( $formarray['wptripadvisor_t_createslider'] ) ? sanitize_text_field( $formarray['wptripadvisor_t_createslider'] ) : 'yes';
+		$numslides          = isset( $formarray['wptripadvisor_t_numslides'] ) ? sanitize_text_field( $formarray['wptripadvisor_t_numslides'] ) : '3';
+		$read_more          = isset( $formarray['wprevpro_t_read_more'] ) ? sanitize_text_field( $formarray['wprevpro_t_read_more'] ) : 'no';
+		$read_more_text     = isset( $formarray['wprevpro_t_read_more_text'] ) ? sanitize_text_field( $formarray['wprevpro_t_read_more_text'] ) : 'read more';
+		$review_same_height = isset( $formarray['wprevpro_t_review_same_height'] ) ? sanitize_text_field( $formarray['wprevpro_t_review_same_height'] ) : 'no';
+		$min_rating         = isset( $formarray['wptripadvisor_t_min_rating'] ) ? sanitize_text_field( $formarray['wptripadvisor_t_min_rating'] ) : '1';
+		$slidermobileview   = isset( $formarray['wprevpro_slidermobileview'] ) ? sanitize_text_field( $formarray['wprevpro_slidermobileview'] ) : '';
+
+		$templatemiscarray = array();
+		$misc_map          = array(
+			'showstars'      => 'wprevpro_template_misc_showstars',
+			'showdate'       => 'wprevpro_template_misc_showdate',
+			'avataropt'      => 'wprevpro_template_misc_avataropt',
+			'showicon'       => 'wprevpro_template_misc_showicon',
+			'bgcolor1'       => 'wprevpro_template_misc_bgcolor1',
+			'bgcolor2'       => 'wprevpro_template_misc_bgcolor2',
+			'tcolor1'        => 'wprevpro_template_misc_tcolor1',
+			'tcolor2'        => 'wprevpro_template_misc_tcolor2',
+			'tcolor3'        => 'wprevpro_template_misc_tcolor3',
+			'bradius'        => 'wprevpro_template_misc_bradius',
+			'showmedia'      => 'wprevpro_t_showmedia',
+			'verified'       => 'wprevpro_template_misc_verified',
+			'lastnameformat' => 'wprevpro_template_misc_lastname',
+			'blocation'      => 'wprevpro_t_blocation',
+			'filtersource'   => 'wprevpro_t_filtersource',
+			'slideautodelay' => 'wptripadvisor_t_slideautodelay',
+			'slidespeed'     => 'wptripadvisor_t_slidespeed',
+			'bshape'         => 'wprevpro_t_bshape',
+			'bimgsize'       => 'wprevpro_t_bimgsize',
+			'bbradius'       => 'wprevpro_t_bbradius',
+			'bbwidth'        => 'wprevpro_t_bbwidth',
+			'bbtnurl'        => 'wprevpro_t_bbtnurl',
+			'bimgurl'        => 'wprevpro_t_bimgurl',
+			'bname'          => 'wprevpro_t_bname',
+			'bnameurl'       => 'wprevpro_t_bnameurl',
+			'read_more_num'  => 'wprevpro_t_read_more_num',
+		);
+		foreach ( $misc_map as $key => $postkey ) {
+			if ( isset( $formarray[ $postkey ] ) ) {
+				$templatemiscarray[ $key ] = sanitize_text_field( $formarray[ $postkey ] );
+			}
+		}
+
+		$color_keys = array( 'bbcolor' => 'wprevpro_t_bbcolor', 'bbkcolor' => 'wprevpro_t_bbkcolor', 'bbtncolor' => 'wprevpro_t_bbtncolor', 'read_more_color' => 'wprevpro_t_read_more_color' );
+		foreach ( $color_keys as $key => $postkey ) {
+			if ( isset( $formarray[ $postkey ] ) ) {
+				$templatemiscarray[ $key ] = WP_TripAdvisor_Review_Sanitize::sanitize_css_color( $formarray[ $postkey ] );
+			}
+		}
+
+		$tfont1_val = isset( $formarray['wprevpro_template_misc_tfont1'] ) ? absint( $formarray['wprevpro_template_misc_tfont1'] ) : 0;
+		$tfont2_val = isset( $formarray['wprevpro_template_misc_tfont2'] ) ? absint( $formarray['wprevpro_template_misc_tfont2'] ) : 0;
+		$templatemiscarray['tfont1'] = $tfont1_val > 0 ? (string) $tfont1_val : '';
+		$templatemiscarray['tfont2'] = $tfont2_val > 0 ? (string) $tfont2_val : '';
+
+		$checkbox_keys = array( 'bhreviews', 'bhbtn', 'bhbased', 'bhphoto', 'bhname', 'bcenter', 'bdropsh', 'bhpow', 'bobasedon', 'borevus', 'sliderautoplay', 'sliderhideprevnext', 'sliderhidedots', 'sliderfixedheight' );
+		$checkbox_map  = array(
+			'bhreviews'           => 'wprevpro_t_bhreviews',
+			'bhbtn'               => 'wprevpro_t_bhbtn',
+			'bhbased'             => 'wprevpro_t_bhbased',
+			'bhphoto'             => 'wprevpro_t_bhphoto',
+			'bhname'              => 'wprevpro_t_bhname',
+			'bcenter'             => 'wprevpro_t_bcenter',
+			'bdropsh'             => 'wprevpro_t_bdropsh',
+			'bhpow'               => 'wprevpro_t_bhpow',
+			'bobasedon'           => 'wprevpro_t_bobasedon',
+			'borevus'             => 'wprevpro_t_borevus',
+			'sliderautoplay'      => 'wprevpro_sliderautoplay',
+			'sliderhideprevnext'  => 'wprevpro_sliderhideprevnext',
+			'sliderhidedots'      => 'wprevpro_sliderhidedots',
+			'sliderfixedheight'   => 'wprevpro_sliderfixedheight',
+		);
+		foreach ( $checkbox_map as $key => $postkey ) {
+			if ( isset( $formarray[ $postkey ] ) ) {
+				$templatemiscarray[ $key ] = sanitize_text_field( $formarray[ $postkey ] );
+			}
+		}
+
+		$templatemiscjson = wp_json_encode( $templatemiscarray );
+		$timenow          = time();
+
+		$data = array(
+			'title'               => $title,
+			'template_type'       => $template_type,
+			'style'               => $style,
+			'created_time_stamp'  => $timenow,
+			'display_num'         => $display_num,
+			'display_num_rows'    => $display_num_rows,
+			'display_order'       => $display_order,
+			'hide_no_text'        => $hide_no_text,
+			'template_css'        => $template_css,
+			'min_rating'          => $min_rating,
+			'min_words'           => '',
+			'max_words'           => '',
+			'rtype'               => '["tripadvisor"]',
+			'rpage'               => '',
+			'createslider'        => $createslider,
+			'numslides'           => $numslides,
+			'sliderautoplay'      => '',
+			'sliderdirection'     => '',
+			'sliderarrows'        => '',
+			'sliderdots'          => '',
+			'sliderdelay'         => '',
+			'sliderheight'        => '',
+			'showreviewsbyid'     => '',
+			'template_misc'       => $templatemiscjson,
+			'read_more'           => $read_more,
+			'read_more_text'      => $read_more_text,
+			'slidermobileview'    => $slidermobileview,
+			'review_same_height'  => $review_same_height,
+		);
+
+		$format = array(
+			'%s', '%s', '%d', '%d', '%d', '%d', '%s', '%s', '%s', '%d',
+			'%d', '%d', '%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s',
+			'%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s',
+		);
+
+		$returnarray = array(
+			'iu'         => '',
+			'ack'        => '',
+			'ackmessage' => '',
+			't_id'       => '',
+		);
+
+		if ( $t_id === '' ) {
+			$returnarray['iu'] = 'insert';
+			$inserttemplate    = $wpdb->insert( $table_name, $data, $format );
+			$t_id              = $wpdb->insert_id;
+			if ( ! $inserttemplate ) {
+				$returnarray['ack']        = 'error';
+				$returnarray['ackmessage'] = __( 'Unable to update. Try refreshing the page.', 'wp-tripadvisor-review-slider' );
+			} else {
+				$returnarray['ack']        = 'success';
+				$returnarray['ackmessage'] = __( 'Template Saved!', 'wp-tripadvisor-review-slider' );
+			}
+		} else {
+			$returnarray['iu'] = 'update';
+			$updatetempquery   = $wpdb->update( $table_name, $data, array( 'id' => absint( $t_id ) ), $format, array( '%d' ) );
+			if ( false === $updatetempquery ) {
+				$returnarray['ack']        = 'error';
+				$returnarray['ackmessage'] = __( 'Unable to update. Try refreshing the page.', 'wp-tripadvisor-review-slider' );
+			} else {
+				$returnarray['ack']        = 'success';
+				$returnarray['ackmessage'] = __( 'Template Updated!', 'wp-tripadvisor-review-slider' );
+			}
+		}
+
+		$returnarray['t_id'] = $t_id;
+		$returnpreview       = $this->wptripadvisor_previewtemplate_ajax_get( $t_id );
+		$returnarray['templatehtml'] = $returnpreview['templatehtml'];
+
+		echo wp_json_encode( $returnarray );
+		die();
+	}
+
+	public function get_token() {
+		return $this->_token;
+	}
+
+	public function get_version() {
+		return $this->version;
+	}
 
 }

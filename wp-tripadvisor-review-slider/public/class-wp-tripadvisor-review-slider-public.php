@@ -135,7 +135,8 @@ class WP_TripAdvisor_Review_Public {
 		// Public users don't need access to admin AJAX endpoints
 		$script_vars = array(
 			'wpfb_ajaxurl' => admin_url( 'admin-ajax.php' ),
-			'wprevpluginsurl' => wprev_trip_plugin_url
+			'wprevpluginsurl' => wprev_trip_plugin_url,
+			'wprevplugin_url' => wprev_trip_plugin_url
 		);
 		
 		// Only add nonce for users with manage_options capability

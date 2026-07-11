@@ -1,4 +1,4 @@
-/**
+﻿/**
  * All of the CSS for your admin-specific functionality should be
  * included in this file.
  */
@@ -36,9 +36,21 @@ a#provimg {
 	margin: 10px 0px 0 -10px;
 }
 
+span.nav-tab.nav-tab-active,
 a.nav-tab.nav-tab-active {
 	background: #ffffff;
-    border-bottom-color: white;
+	border-bottom: 1px solid #ffffff;
+}
+.settingtab {
+	cursor: pointer;
+}
+.form-table th {
+	padding: 15px 10px;
+}
+.wprevpro_btnicononlyhelp::before {
+	padding-top: 0;
+	cursor: pointer;
+	margin-top: 0;
 }
 div#wprev-66023 {
     color: green;
@@ -82,6 +94,9 @@ div#setting-error-settings_updated {
 }
 .text_red {
     color: #ce0606;
+}
+tr.hiddenrow {
+	background-color: #9c9c9c !important;
 }
 .notice, .updated {
     background-color: rgba(0, 160, 210, 0.14) !important;
@@ -241,7 +256,7 @@ div#wptripadvisor_new_review {
     cursor: pointer;
 }
 /*-----------template post page-------------*/
-div#wptripadvisor_new_template {
+div#wptripadvisor_new_template, div#wpfbr_new_template {
     border: 1px solid #e5e5e5;
     -webkit-box-shadow: 0 1px 1px rgba(0,0,0,0.04);
     box-shadow: 0 1px 1px rgba(0,0,0,0.04);
@@ -310,7 +325,7 @@ span#wptripadvisor_selectedrevsdiv {
     position: absolute !important;
 }
 
-div#wptripadvisor_template_preview {
+div#wptripadvisor_template_preview, div#wprevpro_template_preview {
     margin-left: -10px;
 }
 span#wptripadvisor_clearselectedrevsbtn {
@@ -328,32 +343,27 @@ input#tripadvisor_business_url {
 }
 
 /* WP 7 admin styling */
-#wptripadvisor_new_template input[type="text"],
-#wptripadvisor_new_template input[type="number"],
-#wptripadvisor_new_template select {
+#wptripadvisor_new_template input[type="text"],#wpfbr_new_template input[type="text"],
+#wptripadvisor_new_template input[type="number"],#wpfbr_new_template input[type="number"],
+#wptripadvisor_new_template select,#wpfbr_new_template select {
     height: 32px;
     min-height: 32px;
     box-sizing: border-box;
     line-height: 1.4;
 }
-#wptripadvisor_new_template select {
+#wptripadvisor_new_template select,#wpfbr_new_template select {
     padding: 0 24px 0 8px;
 }
-#wptripadvisor_new_template .wp-picker-container .wp-color-result.button {
-    height: 32px;
-    min-height: 32px;
-    box-sizing: border-box;
-}
-#wptripadvisor_new_template table.form-table > tbody > tr.wptripadvisor_row:first-child th,
-#wptripadvisor_new_template table.form-table > tbody > tr.wptripadvisor_row:first-child td {
+#wptripadvisor_new_template table.form-table > tbody > tr.wptripadvisor_row:first-child th, #wpfbr_new_template table.form-table > tbody > tr.wpfbr_row:first-child th, #wpfbr_new_template table.form-table > tbody > tr.wprevpro_row:first-child th,
+#wptripadvisor_new_template table.form-table > tbody > tr.wptripadvisor_row:first-child td, #wpfbr_new_template table.form-table > tbody > tr.wpfbr_row:first-child td, #wpfbr_new_template table.form-table > tbody > tr.wprevpro_row:first-child td {
     vertical-align: middle;
 }
-#wptripadvisor_new_template table.form-table > tbody > tr.wptripadvisor_row:first-child th {
+#wptripadvisor_new_template table.form-table > tbody > tr.wptripadvisor_row:first-child th, #wpfbr_new_template table.form-table > tbody > tr.wpfbr_row:first-child th, #wpfbr_new_template table.form-table > tbody > tr.wprevpro_row:first-child th {
     padding-top: 8px;
     padding-bottom: 8px;
     white-space: nowrap;
 }
-#wptripadvisor_new_template #wptripadvisor_template_title {
+#wptripadvisor_new_template #wptripadvisor_template_title, #wpfbr_new_template #wptripadvisor_template_title {
     margin: 0;
     vertical-align: middle;
 }
@@ -372,24 +382,72 @@ input#tripadvisor_business_url {
 .wp_tripadvisor-settings select {
     padding: 0 24px 0 8px;
 }
-#wp_rev_maindiv .button,
-#wp_rev_maindiv .button-secondary,
-#wp_rev_maindiv a.button,
+#wp_rev_maindiv .button:not(.wp-color-result),
+#wp_rev_maindiv .button-secondary:not(.wp-color-result),
+#wp_rev_maindiv a.button:not(.wp-color-result),
 #wp_rev_maindiv input.button,
-.wp_tripadvisor-settings .button,
-.wp_tripadvisor-settings .button-secondary,
-.wp_tripadvisor-settings a.button,
+.wp_tripadvisor-settings .button:not(.wp-color-result),
+.wp_tripadvisor-settings .button-secondary:not(.wp-color-result),
+.wp_tripadvisor-settings a.button:not(.wp-color-result),
 .wp_tripadvisor-settings input.button {
     border-color: #ccc;
     background: #f6f7f7;
     color: #505050;
-    height: 28px;
-    min-height: 28px;
-    max-height: 28px;
-    padding-top: 0;
-    padding-bottom: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    min-height: 30px;
+    padding: 0 12px;
     box-sizing: border-box;
-    line-height: 1;
+    line-height: 1.2;
+    vertical-align: middle;
+    text-decoration: none;
+}
+/* Do not restyle WP color picker buttons — flex/padding breaks the swatch + label layout */
+#wp_rev_maindiv .wp-picker-container .wp-color-result.button,
+#wp_rev_maindiv .wp-picker-container a.wp-color-result.button,
+.wp_tripadvisor-settings .wp-picker-container .wp-color-result.button,
+.wp_tripadvisor-settings .wp-picker-container a.wp-color-result.button,
+#wptripadvisor_new_template .wp-picker-container .wp-color-result.button,
+#wpfbr_new_template .wp-picker-container .wp-color-result.button {
+    display: inline-block;
+    align-items: initial;
+    justify-content: initial;
+    height: 30px;
+    min-height: 30px;
+    max-height: none;
+    padding: 0 0 0 30px;
+    box-sizing: border-box;
+    line-height: 2.30769231;
+    vertical-align: top;
+    text-decoration: none;
+    background: #f7f7f7;
+    border-color: #ccc;
+    color: #555;
+    box-shadow: 0 1px 0 #ccc;
+}
+#wp_rev_maindiv .wp-picker-container .wp-color-result.button .wp-color-result-text,
+#wp_rev_maindiv .wp-picker-container a.wp-color-result.button .wp-color-result-text,
+.wp_tripadvisor-settings .wp-picker-container .wp-color-result.button .wp-color-result-text,
+#wptripadvisor_new_template .wp-picker-container .wp-color-result.button .wp-color-result-text,
+#wpfbr_new_template .wp-picker-container .wp-color-result.button .wp-color-result-text {
+    display: block;
+    background: #f7f7f7;
+    border-radius: 0 2px 2px 0;
+    border-left: 1px solid #ccc;
+    color: #555;
+    height: 100%;
+    line-height: 28px;
+    padding: 0 6px;
+    text-align: center;
+    position: static;
+    margin: 0;
+}
+#wp_rev_maindiv input.button,
+.wp_tripadvisor-settings input.button {
+    -webkit-appearance: none;
+    appearance: none;
 }
 img.wprev_headerimg {
     margin-bottom: 10px;
@@ -399,26 +457,37 @@ img.wprev_headerimg {
     font-size: 14px;
     margin: .4em 0;
 }
+#wpfbr_new_template p.description {
+    display: none;
+}
 #wp_rev_maindiv #newtemplateform input[type="submit"].button,
-#wp_rev_maindiv #newtemplateform a.button,
+#wp_rev_maindiv #newtemplateform a.button:not(.wp-color-result),
 #wp_rev_maindiv #wptripadvisor_submittemplatebtn,
-#wp_rev_maindiv #wptripadvisor_addnewtemplate_cancel {
+#wp_rev_maindiv #wptripadvisor_addnewtemplate_cancel,
+#wp_rev_maindiv #wpfbr_addnewtemplate_cancel,
+#wp_rev_maindiv #wptripadvisor_addnewtemplate_update,
+#wp_rev_maindiv #wprevpro_addnewtemplate_update,
+#wp_rev_maindiv #upload_avatar_button,
+#wp_rev_maindiv #wptripadvisor_addnewreview_cancel,
+#wp_rev_maindiv #wprevpro_submitreviewbtn,
+#wp_rev_maindiv #currentsources a.button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: 28px;
-    min-height: 28px;
-    max-height: 28px;
+    height: 30px;
+    min-height: 30px;
     padding: 0 12px;
     margin: 0 6px 0 0;
     box-sizing: border-box;
-    line-height: 1;
+    line-height: 1.2;
     vertical-align: middle;
     -webkit-appearance: none;
     appearance: none;
 }
 #wp_rev_maindiv #newtemplateform input[type="submit"].button-primary,
-#wp_rev_maindiv #wptripadvisor_submittemplatebtn {
+#wp_rev_maindiv #wptripadvisor_submittemplatebtn,
+#wp_rev_maindiv #wptripadvisor_addnewtemplate_update,
+#wp_rev_maindiv #wprevpro_addnewtemplate_update {
     background: #2271b1;
     border-color: #2271b1;
     color: #fff;
@@ -478,4 +547,151 @@ img.wprev_headerimg {
     align-items: center;
     flex-wrap: wrap;
     gap: 6px;
+}
+/* Template editor tabs + badge settings (Google parity) */
+.cursorpointer { cursor: pointer; }
+.badgeinfo { display: flex; gap: 20px; flex-wrap: wrap; }
+.bsetlabel { font-weight: 600; }
+.badgeinfosetting.checkboxes { display: flex; align-items: center; gap: 2px; }
+.badgeinfosetting.checkboxes label { cursor: pointer; }
+#wpfbr_new_template .badgeinfosetting:not(.checkboxes),
+#wptripadvisor_new_template .badgeinfosetting:not(.checkboxes) {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+}
+#wpfbr_new_template .badgeinfosetting:not(.checkboxes) .bsetlabel,
+#wptripadvisor_new_template .badgeinfosetting:not(.checkboxes) .bsetlabel {
+    flex: 0 0 auto; margin: 0;
+}
+.divmoreslidersettings { padding: 12px 4px 2px; }
+tr.wpfbr_row.tabnoterow td, tr.wprevpro_row.tabnoterow td { padding: 10px; }
+tr.wpfbr_row.tabnoterow, tr.wprevpro_row.tabnoterow { background: #f6f6f6; }
+div#wpfbr_loading_prev_div { height: 20px; margin: 5px; }
+/* Admin preview: keep WP list styles from breaking unslider dots/arrows */
+#wptripadvisor_preview_outer .wprs_unslider-nav ol,
+#wptripadvisor_preview_outer .wprs_unslider ul,
+#wptripadvisor_preview_outer .wprs_unslider ol,
+#wptripadvisor_preview_outer .wprs_unslider li {
+	list-style: none !important;
+}
+#wptripadvisor_preview_outer .wprs_unslider ul,
+#wptripadvisor_preview_outer .wprs_unslider ol {
+	margin: 0 !important;
+	padding: 0 !important;
+}
+#wptripadvisor_preview_outer .wprs_unslider-nav ol li {
+	list-style: none !important;
+	display: inline-block !important;
+	width: 9px !important;
+	height: 9px !important;
+	margin: 0 5px !important;
+	padding: 0 !important;
+	text-indent: -999em;
+	overflow: hidden;
+	border-radius: 5px !important;
+	border: 1px solid #c3c3c3;
+	background: transparent;
+	cursor: pointer;
+	float: none !important;
+}
+#wptripadvisor_preview_outer .wprs_unslider-nav ol li.wprs_unslider-active {
+	background: #c3c3c3;
+}
+#wptripadvisor_preview_outer .wprev-slider {
+	margin-left: 20px;
+	margin-right: 20px;
+}
+#wptripadvisor_preview_outer .wprs_unslider-arrow {
+	text-indent: -999em;
+	overflow: hidden;
+	width: 25px;
+	height: 25px;
+	right: 4px;
+}
+#wptripadvisor_preview_outer .wprs_unslider-arrow.prev {
+	left: 4px;
+	right: auto;
+}
+#wptripadvisor_preview_outer img.wprev_media_img {
+	height: 50px;
+	max-height: 50px;
+	max-width: 100%;
+	width: auto;
+	margin-right: 5px;
+	border-radius: 5px;
+}
+#wptripadvisor_preview_outer .wprev_media_div {
+	overflow: hidden;
+}
+#wptripadvisor_preview_outer img.wptripadvisor_t1_star_img_file {
+	width: 100px;
+	height: auto;
+	max-width: 100%;
+}
+img#loadingpreview { height: 20px; display: block; margin: auto; padding-top: 2px; }
+img#savingformimg { height: 30px; }
+.settingstable { border-bottom: 1px solid #ccc; margin-bottom: 10px; }
+.settingtab.nav-tab { margin-left: 0; }
+#update_form_msg_div { display: inline-block; vertical-align: middle; margin-left: 8px; }
+.nextprevbtn { margin-right: 6px; }
+.tabnote { font-size: 13px; color: #555; }
+
+
+/* Ported Google template editor IDs + preview layout */
+#wp_rev_maindiv #wprevpro_addnewtemplate_update,
+#wp_rev_maindiv #wptripadvisor_addnewtemplate_update,
+#wp_rev_maindiv #wpfbr_addnewtemplate_cancel {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    min-height: 28px;
+    max-height: 28px;
+    padding: 0 12px;
+    margin: 0 6px 0 0;
+    box-sizing: border-box;
+    line-height: 1;
+    vertical-align: middle;
+}
+#wp_rev_maindiv #wprevpro_addnewtemplate_update,
+#wp_rev_maindiv #wptripadvisor_addnewtemplate_update {
+    background: #2271b1;
+    border-color: #2271b1;
+    color: #fff;
+}
+#wpfbr_new_template .w3_wprs-row:after,
+#wptripadvisor_new_template .w3_wprs-row:after {
+    content: "";
+    display: table;
+    clear: both;
+}
+div#wprevpro_template_preview,
+div#wptripadvisor_template_preview {
+    margin-left: -10px;
+    min-height: 120px;
+}
+#wpfbr_new_template .settingstable td,
+#wptripadvisor_new_template .settingstable td {
+    padding-left: 0;
+}
+#wpfbr_new_template .wprevpre_temp_label_row select,
+#wpfbr_new_template .wprevpre_temp_label_row input[type="number"],
+#wptripadvisor_new_template .wprevpre_temp_label_row select,
+#wptripadvisor_new_template .wprevpre_temp_label_row input[type="number"] {
+    max-width: 100%;
+}
+#wp_rev_maindiv .wprevpro_btnicononlyhelp.button.dashicons-before {
+    padding: 0 !important;
+}
+/* Style preview card spacing in admin */
+#wprevpro_template_preview .wptripadvisor_t1_outer_div,
+#wprevpro_template_preview .wprevpro_t6_outer_div {
+    max-width: 360px;
+}
+#wprevpro_template_preview .w3_wprs-col {
+    float: none;
+    width: 100%;
+}
+img.rlimg.default_avatar_img {
+    width: 40px;
+    height: 40px;
 }

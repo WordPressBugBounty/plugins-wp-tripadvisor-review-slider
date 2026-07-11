@@ -155,7 +155,7 @@
 }
 img.wptripadvisor_t1_star_img_file {
     width: 100px;
-	margin-bottom: -4px;
+	margin-top: -5px;
 }
 img.wptripadvisor_t1_tripadvisor_logo {
 position: absolute;
@@ -185,13 +185,18 @@ span.wprs_rd_more_text {
 	opacity: 0;
 }
 a.wprev_media_img_a{display:inline-block}img.wprev_media_img{height:50px;margin-right:5px;border-radius:5px;    max-height: 50px;}.wprev_media_div{margin-bottom:0;margin-top:10px;margin-left:0;margin-right:0}.wpproslider_t3_DIV_1a .wprev_media_div{margin:-25px 5px 34px 55px}.wpproslider_t6_DIV_2 .wprev_media_div{margin-left:10px;margin-right:10px}
+a.wprev_media_img_a:active,
+a.wprev_media_img_a:focus,
+a.wprev_media_img_a:hover {
+    color: rgba(255, 255, 255, 0);
+}
 /*------end template style 1 --------*/
 
 /*------wprs_unslider --------*/
-.wprs_unslider{overflow:visible;margin:0;padding:0;position:relative}.wprs_unslider-wrap{position:relative}.wprs_unslider-wrap.wprs_unslider-carousel>li{float:left}.wprs_unslider-vertical>ul{height:100%}.wprs_unslider-vertical li{float:none;width:100%}.wprs_unslider-fade{position:relative}.wprs_unslider-fade .wprs_unslider-wrap li{position:absolute;left:0;top:0;right:0;z-index:8;list-style-type:none}.wprs_unslider-fade .wprs_unslider-wrap li.wprs_unslider-active{z-index:10}.wprs_unslider li,.wprs_unslider ol,.wprs_unslider ul{list-style:none;margin:0;padding:0!important;border:none;list-style-type:none}.wprs_unslider-arrow{position:absolute;left:5px;z-index:2;cursor:pointer}.wprs_unslider-arrow.next{left:auto}.wprs_unslider-arrow{display:block;width:28px;height:28px;top:50%;right:5px;left:auto;margin-top:-30px;overflow:hidden;background:rgba(0,0,0,.2) no-repeat 58% 51%;background-image:url(imgs/slider_arrow.png);background-size:7px 11px;border-radius:32px;text-indent:-999em;opacity:.6;transition:opacity .2s;border-width:0!important}.wprs_unslider-arrow.prev{left:5px;right:auto;-ms-transform:rotate(-180deg);transform:rotate(-180deg);background-position-x: 50%;background-position-y: 49%;}.wprs_unslider-nav ol{list-style:none;text-align:center}.wprs_unslider-nav ol li{display:inline-block;width:9px;height:9px;margin:0 4px !important;background:0 0;border-radius:5px;overflow:hidden;text-indent:-999em;border:1px solid #c3c3c3;cursor:pointer}.wprs_unslider-nav ol li.wprs_unslider-active{background:#c3c3c3;cursor:default}
+.wprs_unslider{overflow:visible;margin:0;padding:0;position:relative}.wprs_unslider-wrap{position:relative}.wprs_unslider-wrap.wprs_unslider-carousel>li{float:left}.wprs_unslider-vertical>ul{height:100%}.wprs_unslider-vertical li{float:none;width:100%}.wprs_unslider-fade{position:relative}.wprs_unslider-fade .wprs_unslider-wrap li{position:absolute;left:0;top:0;right:0;z-index:8;list-style-type:none}.wprs_unslider-fade .wprs_unslider-wrap li.wprs_unslider-active{z-index:10}.wprs_unslider li,.wprs_unslider ol,.wprs_unslider ul{list-style:none;margin:0!important;padding:0!important;border:none;list-style-type:none}.wprs_unslider-arrow{position:absolute;z-index:2;cursor:pointer}.wprs_unslider-arrow.next{left:auto;background-position-x:52%;background-position-y:50%}.wprs_unslider-arrow{display:block;width:25px;height:25px;top:50%;right:4px;left:auto;margin-top:-30px;overflow:hidden;background:rgba(0,0,0,.2) no-repeat 58% 51%;background-image:url(imgs/slider_arrow.png);background-size:7px 11px;border-radius:32px;text-indent:-999em;opacity:.6;transition:opacity .2s;border-width:0!important}.wprs_unslider-arrow.prev{left:4px;right:auto;-ms-transform:rotate(-180deg);transform:rotate(-180deg);background-position-x:52%;background-position-y:50%}.wprs_unslider-nav ol{list-style:none;text-align:center;margin:8px 0 0;padding:0}.wprs_unslider-nav ol li{display:inline-block;width:9px;height:9px;margin:0 5px!important;background:transparent;border-radius:5px;overflow:hidden;text-indent:-999em;border:1px solid #c3c3c3;cursor:pointer}.wprs_unslider-nav ol li.wprs_unslider-active{background:#c3c3c3;cursor:default}
 .wprev-slider {
-    margin-left: 38px;
-    margin-right: 38px;
+    margin-left: 20px;
+    margin-right: 20px;
 }
 /*------end wprs_unslider-dots --------*/
 /*------ wptripadvisor_w3 --------*/
@@ -251,6 +256,10 @@ span.svgicons.svg-wprsp-verified {
     margin-bottom: -3px;
     margin-right: 3px;
 }
+.wprevpro_t6_outer_div span.svgicons.svg-wprsp-verified,
+.wprevpro_t6_outer_div_widget span.svgicons.svg-wprsp-verified {
+    margin-bottom: -5px;
+}
 
 .svg-wprsp-verified {
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg version='1.1' xmlns='http://www.w3.org/2000/svg' width='20' height='22' viewBox='0 0 24 24'%3E%3Cpath d='M23.016 12l-2.438-2.813 0.328-3.656-3.609-0.844-1.875-3.188-3.422 1.453-3.422-1.453-1.875 3.188-3.609 0.797 0.328 3.703-2.438 2.813 2.438 2.813-0.328 3.656 3.609 0.844 1.875 3.188 3.422-1.453 3.422 1.453 1.875-3.188 3.609-0.844-0.328-3.656zM10.078 16.734l-3.797-3.844 1.5-1.453 2.297 2.344 5.859-5.906 1.5 1.5z'%3E%3C/path%3E%3C/svg%3E%0A");
@@ -274,3 +283,152 @@ span.svgicons.svg-wprsp-verified {
 	z-index: 999999;
 	}
 
+
+/* Badge + Style 6 (ported from Google free template parity) */
+.wprev_outer_wb {
+    display: flex !important;
+    margin-bottom: 7px;
+}
+.wprev_badge_div.badgeleft {
+    margin: 10px 5px 10px 10px !important;
+}
+.wprev_badge_div.badgeright {
+    margin: 10px 10px 10px 5px !important;
+}
+.wprev_outer_wb.wprev_badge_style6_side {
+    align-items: flex-start !important;
+}
+.wprev_outer_wb.wprev_badge_style6_side .wprev_badge_div.badgeleft,
+.wprev_outer_wb.wprev_badge_style6_side .wprev_badge_div.badgeright {
+    margin-top: 0px !important;
+    margin-bottom: 0px !important;
+}
+.wprev_outer_wb.wprev_badge_style6_side .wprevpro_t6_outer_div,
+.wprev_outer_wb.wprev_badge_style6_side .wprevpro_t6_outer_div_widget {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+/* Style 6 review cards default to margin-top:10px — remove so tops line up with badge */
+.wprev_outer_wb.wprev_badge_style6_side .wpproslider_t6_DIV_1,
+.wprev_outer_wb.wprev_badge_style6_side .wprevpro_t6_DIV_1 {
+    margin-top: 0 !important;
+}
+.wprev-tripadvisor-place {
+    display: flex !important;
+    padding: 8px 12px !important;
+    box-shadow: rgba(0, 0, 0, .08) 2px 2px 3px 0px !important;
+    border: 1px solid #f5f5f5 !important;
+}
+.wprev-tripadvisor-left {
+    padding: 10px 8px 10px 5px !important;
+}
+.wprev-tripadvisor-right {
+    padding: 3px !important;
+}
+.wprev-tripadvisor-right div {
+    line-height: 24px !important;
+    font-size: 15px !important;
+    width: max-content !important;
+}
+.wprev-tripadvisor-name {
+    font-weight: bold !important;
+}
+.wprev-tripadvisor-place a {
+    text-decoration: none !important;
+}
+a.wprev-tripadvisor-wr-a {
+    color: #fff !important;
+    padding: 3px 8px 5px !important;
+    outline: none !important;
+    border-radius: 3px !important;
+    background: #0a6cff !important;
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+    box-shadow: 0 0 2px rgba(0, 0, 0, .12), 0 2px 4px rgba(0, 0, 0, .24) !important;
+    user-select: none !important;
+    transition: all .2s ease-in-out !important;
+    display: flex !important;
+    align-items: center !important;
+    width: fit-content !important;
+}
+a.wprev-tripadvisor-wr-a:hover {
+    background: #0a6cffc7 !important;
+}
+.wprev-tripadvisor-wr {
+    margin: 12px 0px 6px !important;
+}
+span.wprev-tripadvisor-rating {
+    font-size: 18px !important;
+    margin-right: 5px !important;
+    font-weight: 500 !important;
+}
+span.wprev_btot {
+    font-weight: 600 !important;
+}
+.badgehideclass {
+    display:none !important;
+}
+.sprev-tripadvisor-left-src {
+    border-radius: 5% !important;
+    min-width: 50px !important;
+    min-height: 50px !important;
+    display:block;
+}
+span.wprev-businessname {
+    font-size: 15px !important;
+    color: #373737 !important;
+    font-weight: 600 !important;
+}
+img.wprev-tripadvisor-powered-img {
+    vertical-align: middle !important;
+    height: 18px !important;
+    width: auto !important;
+    max-width: 110px !important;
+    max-height: 20px !important;
+    object-fit: contain !important;
+    display: block;
+}
+a.wprev-tripadvisor-wr-a svg {
+    margin-left: 5px !important;
+    margin-top: 1px !important;
+    flex-shrink: 0 !important;
+}
+img.sprev-tripadvisor-left-src {
+    object-fit: cover !important;
+}
+@media only screen and (max-width: 600px) {
+    .wprev_outer_wb {
+        flex-wrap: wrap;
+    }
+    .wprev_badge_div.badgeleft {
+        margin: 10px 10px 10px 10px !important;
+        width: -webkit-fill-available;
+    }
+    .wprev_outer_wb .wprs_unslider {
+        max-width: -webkit-fill-available;
+    }
+    .wprev_badge_div.badgeright {
+        width: -webkit-fill-available;
+    }
+}
+
+.t6datediv,.wpproslider_t6_SPAN_6{font-style:italic}
+.wpproslider_t6_DIV_2,.wpproslider_t6_DIV_3,.wpproslider_t6_IMG_2{box-sizing:border-box;column-rule-color:#fff;outline:#fff none 0}
+.wprevpro_t6_outer_div_widget{padding:0;margin:15px -10px}
+.wprevpro_t6_outer_div{padding:0 10px;margin:15px 0px}
+.wpproslider_t6_DIV_1,.wprevpro_t6_DIV_1{margin-top:10px;margin-bottom:10px}
+.wpproslider_t6_DIV_1a{margin-left:10px;margin-right:10px}
+.wpproslider_t6_DIV_2{color:#fff;background:#fdfdfd;border:1px solid #eee;border-radius:0 0 4px 4px;transition:all .4s ease-in-out 0s;padding:5px;position:relative}
+.wpproslider_t6_IMG_2{color:#fff;height:60px;vertical-align:middle;width:60px;border:0;border-radius:50%!important}
+.wpproslider_t6_DIV_3{border:0;overflow:hidden;margin-left:15px;min-height:80px}
+.wpproslider_t6_P_4,.wpproslider_t6_SPAN_6,.wpproslider_t6_STRONG_5{box-sizing:border-box;color:#555;border:0;outline:none 0}
+.wpproslider_t6_P_4{margin:0 15px 10px!important}
+.wpproslider_t6_STRONG_5{font-weight:700}
+.wpproslider_t6_DIV_3L{float:left;text-align:center;overflow:hidden;margin-right:10px;margin-left:10px;margin-top:10px}
+.wpproslider_t6_DIV_2_top{width:auto;position:relative;margin-left:5px}
+.wpproslider_t6_DIV_3_logo{position:absolute;top:4px;right:4px}
+img.wprevpro_t6_site_logo{margin:0;padding:0;height:32px}
+.t6displayname{margin-top:5px;font-size:medium;margin-bottom:0;padding-right:30px}
+.wpproslider_t6_star_DIV{line-height:1em;margin-top:1px;margin-bottom:0px}
+.wpproslider_t6_DIV_4{margin:4px 6px}
+.wpproslider_t6_DIV_2 .wprev_media_div{margin-left:10px;margin-right:10px}

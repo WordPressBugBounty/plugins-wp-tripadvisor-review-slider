@@ -14,8 +14,8 @@
  * @wordpress-plugin
  * Plugin Name: 	  WP TripAdvisor Review Slider
  * Plugin URI:        https://wpreviewslider.com/
- * Description:       Display TripAdvisor reviews in a slider or grid. Lightweight plugin code with reviews saved locally on your server for super fast loading. Includes user photos from TripAdvisor (Trip Advisor) reviews.
- * Version:           14.4
+ * Description:       Display TripAdvisor reviews in a slider or grid. Download multiple locations, store reviews locally, and show badges, photos, and templates.
+ * Version:           14.6
  * Author:            LJ Apps
  * Author URI:        http://ljapps.com/
  * License:           GPL-2.0+

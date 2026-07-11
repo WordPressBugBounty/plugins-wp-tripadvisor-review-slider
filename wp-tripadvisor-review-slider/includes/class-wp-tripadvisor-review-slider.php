@@ -69,7 +69,8 @@ class WP_TripAdvisor_Review {
 	public function __construct() {
 
 		$this->_token = 'wp-tripadvisor-review-slider';
-		$this->version = '14.4';
+		// 14.6: multi-source TripAdvisor downloads, review list edit/hide/delete, badge averages, Style 6 polish.
+		$this->version = '14.6';
 		//using this for development
 		//$this->version = time();
 
@@ -104,7 +105,7 @@ class WP_TripAdvisor_Review {
 			
 			$sql = "CREATE TABLE $table_name (
 				id mediumint(9) NOT NULL AUTO_INCREMENT,
-				pageid varchar(50) DEFAULT '' NOT NULL,
+				pageid varchar(250) DEFAULT '' NOT NULL,
 				pagename tinytext NOT NULL,
 				created_time datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
 				created_time_stamp int(12) NOT NULL,
@@ -152,18 +153,68 @@ class WP_TripAdvisor_Review {
 				sliderdots varchar(3) DEFAULT '' NOT NULL,
 				sliderdelay int(2) NOT NULL,
 				sliderheight varchar(3) DEFAULT '' NOT NULL,
+				slidermobileview varchar(5) DEFAULT '' NOT NULL,
 				showreviewsbyid varchar(600) DEFAULT '' NOT NULL,
-				template_misc varchar(800) DEFAULT '' NOT NULL,
+				template_misc text NOT NULL,
 				read_more varchar(3) DEFAULT '' NOT NULL,
 				read_more_num int(4) NOT NULL,
 				read_more_text varchar(50) DEFAULT '' NOT NULL,
 				facebook_icon varchar(3) DEFAULT '' NOT NULL,
+				review_same_height varchar(3) DEFAULT '' NOT NULL,
 				UNIQUE KEY id (id),
 				PRIMARY KEY (id)
 			) $charset_collate;";
 			
 			dbDelta( $sql_template );
-			
+
+			$table_name_totalavg = $wpdb->prefix . 'wptripadvisor_total_averages';
+			$sql_totalavg = "CREATE TABLE $table_name_totalavg (
+				btp_id varchar(150) DEFAULT '' NOT NULL,
+				btp_name varchar(150) DEFAULT '' NOT NULL,
+				btp_type varchar(10) DEFAULT '' NOT NULL,
+				pagetype varchar(100) DEFAULT '' NOT NULL,
+				pagetypedetails text NOT NULL,
+				total_indb varchar(10) DEFAULT '' NOT NULL,
+				total varchar(10) DEFAULT '' NOT NULL,
+				avg_indb varchar(10) DEFAULT '' NOT NULL,
+				avg varchar(10) DEFAULT '' NOT NULL,
+				numr1 varchar(10) DEFAULT '' NOT NULL,
+				numr2 varchar(10) DEFAULT '' NOT NULL,
+				numr3 varchar(10) DEFAULT '' NOT NULL,
+				numr4 varchar(10) DEFAULT '' NOT NULL,
+				numr5 varchar(10) DEFAULT '' NOT NULL,
+				UNIQUE KEY id (btp_id),
+				PRIMARY KEY (btp_id)
+			) $charset_collate;";
+			dbDelta( $sql_totalavg );
+
+			// Backfill pageid/pagename on legacy reviews that only have from_url.
+			$reviews_table = $wpdb->prefix . 'wptripadvisor_reviews';
+			$legacy_rows = $wpdb->get_results( "SELECT id, from_url FROM {$reviews_table} WHERE (pageid = '' OR pageid IS NULL) AND from_url != '' AND type = 'TripAdvisor' LIMIT 500" );
+			if ( is_array( $legacy_rows ) ) {
+				foreach ( $legacy_rows as $legacy_row ) {
+					$pid   = '';
+					$pname = '';
+					if ( preg_match( '/-d(\d+)/i', $legacy_row->from_url, $m ) ) {
+						$pid = 'd' . $m[1];
+					}
+					if ( preg_match( '/-Reviews-([A-Za-z0-9_]+)/', $legacy_row->from_url, $m2 ) ) {
+						$pname = str_replace( '_', ' ', $m2[1] );
+					}
+					if ( $pid !== '' ) {
+						$wpdb->update(
+							$reviews_table,
+							array(
+								'pageid'   => $pid,
+								'pagename' => $pname,
+							),
+							array( 'id' => $legacy_row->id ),
+							array( '%s', '%s' ),
+							array( '%d' )
+						);
+					}
+				}
+			}
 			
 		}
 
@@ -206,6 +257,11 @@ class WP_TripAdvisor_Review {
 		 * The class responsible for defining all actions that occur in the admin area.
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-wp-tripadvisor-review-slider-admin.php';
+
+		/**
+		 * Shared sanitization helpers for template CSS output.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-tripadvisor-review-slider-sanitize.php';
 		
 		/**
 		 * The class responsible for parsing yelp and tripadvisor pages
@@ -282,8 +338,15 @@ class WP_TripAdvisor_Review {
 		$this->loader->add_action( 'wp_ajax_tripadvisor_hide_review', $plugin_admin, 'wptripadvisor_hidereview_ajax' ); 
 
 		//add ajax for hiding and deleting reviews in table
-		$this->loader->add_action( 'wp_ajax_tripadvisor_find_reviews', $plugin_admin, 'wptripadvisor_getreviews_ajax' ); 		
-		
+		$this->loader->add_action( 'wp_ajax_tripadvisor_find_reviews', $plugin_admin, 'wptripadvisor_getreviews_ajax' );
+
+		// Template editor AJAX: save + live preview.
+		$this->loader->add_action( 'wp_ajax_wptripadvisor_save_template', $plugin_admin, 'wptripadvisor_savetemplate_ajax' );
+		$this->loader->add_action( 'wp_ajax_wptripadvisor_get_preview', $plugin_admin, 'wptripadvisor_previewtemplate_ajax' );
+
+		// Get TripAdvisor Reviews: multi-source add + per-source download.
+		$this->loader->add_action( 'wp_ajax_wptripadvisor_add_source', $plugin_admin, 'wptripadvisor_ajax_add_source' );
+		$this->loader->add_action( 'wp_ajax_wptripadvisor_download_source', $plugin_admin, 'wptripadvisor_ajax_download_source' );
 
 		//add download csv file function wptripadvisor_download_csv
 		$this->loader->add_action( 'plugins_loaded', $plugin_admin, 'wptripadvisor_download_csv' ); 

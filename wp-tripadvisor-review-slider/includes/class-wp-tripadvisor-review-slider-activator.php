@@ -66,7 +66,7 @@ class WP_TripAdvisor_Review_Activator {
 
 		$sql = "CREATE TABLE $table_name (
 			id mediumint(9) NOT NULL AUTO_INCREMENT,
-			pageid varchar(50) DEFAULT '' NOT NULL,
+			pageid varchar(250) DEFAULT '' NOT NULL,
 			pagename tinytext NOT NULL,
 			created_time datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
 			created_time_stamp int(12) NOT NULL,
@@ -114,17 +114,40 @@ class WP_TripAdvisor_Review_Activator {
 			sliderdots varchar(3) DEFAULT '' NOT NULL,
 			sliderdelay int(2) NOT NULL,
 			sliderheight varchar(3) DEFAULT '' NOT NULL,
+			slidermobileview varchar(5) DEFAULT '' NOT NULL,
 			showreviewsbyid varchar(600) DEFAULT '' NOT NULL,
-			template_misc varchar(800) DEFAULT '' NOT NULL,
+			template_misc text NOT NULL,
 			read_more varchar(3) DEFAULT '' NOT NULL,
 			read_more_num int(4) NOT NULL,
 			read_more_text varchar(50) DEFAULT '' NOT NULL,
 			facebook_icon varchar(3) DEFAULT '' NOT NULL,
+			review_same_height varchar(3) DEFAULT '' NOT NULL,
 			UNIQUE KEY id (id),
 			PRIMARY KEY (id)
 		) $charset_collate;";
 		
 		dbDelta( $sql_template );
+
+		$table_name_totalavg = $wpdb->prefix . 'wptripadvisor_total_averages';
+		$sql_totalavg = "CREATE TABLE $table_name_totalavg (
+			btp_id varchar(150) DEFAULT '' NOT NULL,
+			btp_name varchar(150) DEFAULT '' NOT NULL,
+			btp_type varchar(10) DEFAULT '' NOT NULL,
+			pagetype varchar(100) DEFAULT '' NOT NULL,
+			pagetypedetails text NOT NULL,
+			total_indb varchar(10) DEFAULT '' NOT NULL,
+			total varchar(10) DEFAULT '' NOT NULL,
+			avg_indb varchar(10) DEFAULT '' NOT NULL,
+			avg varchar(10) DEFAULT '' NOT NULL,
+			numr1 varchar(10) DEFAULT '' NOT NULL,
+			numr2 varchar(10) DEFAULT '' NOT NULL,
+			numr3 varchar(10) DEFAULT '' NOT NULL,
+			numr4 varchar(10) DEFAULT '' NOT NULL,
+			numr5 varchar(10) DEFAULT '' NOT NULL,
+			UNIQUE KEY id (btp_id),
+			PRIMARY KEY (btp_id)
+		) $charset_collate;";
+		dbDelta( $sql_totalavg );
 	
 		//add columns to table, just need to update the dbDelta function above, will modify to match.
 		

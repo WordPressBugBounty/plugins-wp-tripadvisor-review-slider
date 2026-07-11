@@ -1,61 +1,142 @@
 <?php
 class WP_Trip_Template_Functions {
-	
-	//============================================================
-	//functions for creating and setting up the template display, each template will call these functions
-	//--------------------------
-	public function wprevpro_get_media($review,$template_misc_array){	//get media and add to template
-		$media='';
-		//default this to turned on.
-		if(!isset($template_misc_array['showmedia'])){
-			$template_misc_array['showmedia']='no';
+
+	/**
+	 * Format reviewer name based on template_misc lastnameformat.
+	 * Defaults to full name (current TripAdvisor behavior) when unset.
+	 *
+	 * @param object $review Review row.
+	 * @param array  $template_misc_array Decoded template_misc.
+	 * @return string
+	 */
+	public function wprevpro_get_reviewername( $review, $template_misc_array ) {
+		$tempreviewername = stripslashes( strip_tags( $review->reviewer_name ) );
+		$words            = explode( ' ', $tempreviewername );
+		$firstname        = isset( $words[0] ) ? $words[0] : $tempreviewername;
+
+		if ( ! isset( $template_misc_array['lastnameformat'] ) || $template_misc_array['lastnameformat'] === '' ) {
+			$template_misc_array['lastnameformat'] = 'show';
 		}
-		if($template_misc_array['showmedia']=='yes'){
-			$mediaurls = stripslashes($review->mediaurlsarrayjson);
-			$mediathumburls = stripslashes($review->mediathumburlsarrayjson);
-			$mediathumburlsarray = json_decode($mediathumburls, true);
-			
-			if(isset($mediaurls) && $mediaurls!=''){
-				//turn back in to array then loop
-				$mediaurlsarray = json_decode($mediaurls, true);
-				if(is_array($mediaurlsarray)){
-					$mediaurlsarray = array_filter($mediaurlsarray);
-					if(count($mediaurlsarray)>0){
-					$media='<div class="wprev_media_div '.count($mediaurlsarray).'">';
-					$mediaurlsarray = array_values($mediaurlsarray);
-					$n=0;
-					foreach ($mediaurlsarray as &$urlvalue) {
-						if($urlvalue!=""){
-							$urlvalue = esc_url($urlvalue);
-							//use thumbnail if we have it
-							if(isset($mediathumburlsarray[$n]) && $mediathumburlsarray[$n]!=''){
-								$thumburl = $mediathumburlsarray[$n];
-							} else {
-								$thumburl = $urlvalue;
+
+		if ( $template_misc_array['lastnameformat'] === 'hide' ) {
+			$tempreviewername = $firstname;
+		} elseif ( $template_misc_array['lastnameformat'] === 'initial' ) {
+			$tempreviewername = $firstname;
+			if ( isset( $words[1] ) && $words[1] !== '' ) {
+				$tempreviewername .= ' ' . strtoupper( substr( $words[1], 0, 1 ) ) . '.';
+			}
+		}
+
+		return $tempreviewername;
+	}
+
+	/**
+	 * Build a local initials avatar as a data-URI SVG (no external service).
+	 *
+	 * @param string $name Reviewer name.
+	 * @param int    $size Pixel size.
+	 * @return string data:image/svg+xml;base64,... URL
+	 */
+	public function wprev_get_initials_avatar_url( $name, $size = 100 ) {
+		$name = trim( wp_strip_all_tags( (string) $name ) );
+		$size = absint( $size );
+		if ( $size < 1 ) {
+			$size = 100;
+		}
+		if ( $size > 500 ) {
+			$size = 500;
+		}
+
+		$words = preg_split( '/\s+/', $name );
+		if ( is_array( $words ) && count( $words ) >= 2 ) {
+			$initials = strtoupper( substr( $words[0], 0, 1 ) . substr( $words[ count( $words ) - 1 ], 0, 1 ) );
+		} elseif ( $name !== '' ) {
+			$initials = strtoupper( substr( $name, 0, 1 ) );
+		} else {
+			$initials = 'U';
+		}
+
+		$hash       = md5( $name !== '' ? $name : 'U' );
+		$background = '#' . substr( $hash, 0, 6 );
+		$r          = hexdec( substr( $hash, 0, 2 ) );
+		$g          = hexdec( substr( $hash, 2, 2 ) );
+		$b          = hexdec( substr( $hash, 4, 2 ) );
+		$brightness = ( ( $r * 299 ) + ( $g * 587 ) + ( $b * 114 ) ) / 1000;
+		if ( $brightness > 200 ) {
+			$background = sprintf( '#%02x%02x%02x', max( 0, $r - 50 ), max( 0, $g - 50 ), max( 0, $b - 50 ) );
+		}
+
+		$font_size = (int) round( $size * 0.4 );
+		$svg       = '<svg xmlns="http://www.w3.org/2000/svg" width="' . $size . '" height="' . $size . '" viewBox="0 0 ' . $size . ' ' . $size . '">';
+		$svg      .= '<rect width="100%" height="100%" fill="' . $background . '"/>';
+		$svg      .= '<text x="50%" y="50%" dy=".1em" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="' . $font_size . '" font-weight="bold" text-anchor="middle" dominant-baseline="middle">' . htmlspecialchars( $initials, ENT_QUOTES, 'UTF-8' ) . '</text>';
+		$svg      .= '</svg>';
+
+		return 'data:image/svg+xml;base64,' . base64_encode( $svg );
+	}
+
+	/**
+	 * Escape an image src that may be https or a data URI.
+	 *
+	 * @param string $url Image URL.
+	 * @return string
+	 */
+	public function wprev_esc_avatar_src( $url ) {
+		if ( strpos( (string) $url, 'data:' ) === 0 ) {
+			return esc_attr( $url );
+		}
+		return esc_url( $url );
+	}
+
+	/**
+	 * Get media HTML for a review when showmedia is yes.
+	 *
+	 * @param object $review Review row.
+	 * @param array  $template_misc_array Decoded template_misc.
+	 * @return string
+	 */
+	public function wprevpro_get_media( $review, $template_misc_array ) {
+		$media = '';
+		if ( ! isset( $template_misc_array['showmedia'] ) ) {
+			$template_misc_array['showmedia'] = 'no';
+		}
+		if ( $template_misc_array['showmedia'] === 'yes' ) {
+			$mediaurls       = stripslashes( $review->mediaurlsarrayjson );
+			$mediathumburls  = stripslashes( $review->mediathumburlsarrayjson );
+			$mediathumburlsarray = json_decode( $mediathumburls, true );
+
+			if ( isset( $mediaurls ) && $mediaurls !== '' ) {
+				$mediaurlsarray = json_decode( $mediaurls, true );
+				if ( is_array( $mediaurlsarray ) ) {
+					$mediaurlsarray = array_filter( $mediaurlsarray );
+					if ( count( $mediaurlsarray ) > 0 ) {
+						$media          = '<div class="wprev_media_div ' . count( $mediaurlsarray ) . '">';
+						$mediaurlsarray = array_values( $mediaurlsarray );
+						$n              = 0;
+						foreach ( $mediaurlsarray as &$urlvalue ) {
+							if ( $urlvalue !== '' ) {
+								$urlvalue = esc_url( $urlvalue );
+								if ( isset( $mediathumburlsarray[ $n ] ) && $mediathumburlsarray[ $n ] !== '' ) {
+									$thumburl = $mediathumburlsarray[ $n ];
+								} else {
+									$thumburl = $urlvalue;
+								}
+								$thumburl = esc_url( $thumburl );
+								if ( stripos( $urlvalue, 'youtu' ) === false ) {
+									$tempclass = 'notyoutu';
+								} else {
+									$tempclass = 'youtu';
+								}
+								$media = $media . '<a class="wprev_media_img_a ' . $tempclass . '" href="' . $urlvalue . '" data-lity-desc="Review media"><img src="' . $thumburl . '" class="wprev_media_img" alt="media thumbnail ' . $n . '"></a>';
 							}
-							$thumburl = esc_url($thumburl);
-							//check if this is youtube video
-							if(stripos($urlvalue,'youtu')===false){
-								//not youtube
-								$tempclass = 'notyoutu';
-							} else {
-								//is youtube
-								$tempclass = 'youtu';
-							}
-							$media= $media . '<a class="wprev_media_img_a '.$tempclass.'" href="'.$urlvalue.'" data-lity><img src="'.$thumburl.'" class="wprev_media_img"  alt="media thumbnail '.$n.'"></a>';
+							$n++;
 						}
-						$n++;
-					}
-					$media= $media . '</div>';
+						$media = $media . '</div>';
 					}
 				}
 			}
 		}
 		return $media;
 	}
-	
+
 }
-	
-	//========================================
-	
-	?>

@@ -1,5 +1,20 @@
 <?php
-$urltrimmedtab = remove_query_arg( array('page', 'deleterev','_wpnonce', 'taction', 'tid', 'sortby', 'sortdir', 'opt','settings-updated') );
+$urltrimmedtab = remove_query_arg( array(
+	'page',
+	'deleterev',
+	'editrev',
+	'hiderev',
+	'newvalue',
+	'opt_type',
+	'_wpnonce',
+	'taction',
+	'tid',
+	'sortby',
+	'sortdir',
+	'opt',
+	'settings-updated',
+	'pnum',
+) );
 
 $urlreviewlist = esc_url( add_query_arg( 'page', 'wp_tripadvisor-reviews',$urltrimmedtab ) );
 $urltemplateposts = esc_url( add_query_arg( 'page', 'wp_tripadvisor-templates_posts',$urltrimmedtab ) );

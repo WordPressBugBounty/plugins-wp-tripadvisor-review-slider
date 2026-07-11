@@ -1,12 +1,14 @@
 .wprs_unslider-nav ol {
   list-style: none;
   text-align: center;
+  margin: 8px 0 0;
+  padding: 0;
 }
 .wprs_unslider-nav ol li {
     display: inline-block;
     width: 9px;
     height: 9px;
-    margin: 0 4px;
+    margin: 0 5px;
     background: transparent;
     border-radius: 5px !important;
     overflow: hidden;

@@ -1,138 +1,191 @@
 (function( $ ) {
 	'use strict';
 
-	/**
-	 * All of the code for your public-facing JavaScript source
-	 * should reside in this file.
-	 *
-	 * Note: It has been assumed you will write jQuery code here, so the
-	 * $ function reference has been prepared for usage within the scope
-	 * of this function.
-	 *
-	 * This enables you to define handlers, for when the DOM is ready:
-	 *
-	 * $(function() {
-	 *
-	 * });
-	 *
-	 * When the window is loaded:
-	 *
-	 * $( window ).load(function() {
-	 *
-	 * });
-	 *
-	 * ...and/or other possibilities.
-	 *
-	 * Ideally, it is not considered best practise to attach more than a
-	 * single DOM-ready or window-load handler for a particular page.
-	 * Although scripts in the WordPress core, Plugins and Themes may be
-	 * practising this, we should strive to set a better example in our own work.
-	 */
-	//document ready
 	$(function(){
-	 
+
 		$( ".wprs_rd_more" ).click(function() {
 			$(this ).hide();
 			$(this ).next("span").show(0, function() {
-				// Animation complete.
 				$(this ).css('opacity', '1.0');
 			  });
-			//$(this ).next("span").css('opacity', '1.0');
-			
-			//change height of wprev-slider-widget
 			$(this ).closest( ".wprev-slider-widget" ).css( "height", "auto" );
-			
-			//change height of wprev-slider
 			$(this ).closest( ".wprev-slider" ).css( "height", "auto" );
-			
-			
+		});
+
+		// Mobile one-review-per-slide rewrite (matches Google free behavior).
+		$( ".wprev-slider, .wprev-slider-widget" ).each(function() {
+			var oneonmobile = $(this).attr( "data-onemobil" );
+			if(oneonmobile=="yes" && window.matchMedia("(max-width: 600px)").matches){
+				var $slider = $(this);
+				var $newlis = [];
+				$slider.find('li').each(function() {
+					$(this).find('.w3_wprs-col').each(function() {
+						var $col = $(this).clone();
+						$col.removeClass (function (index, className) {
+							return (className.match (/(^|\s)l\S+/g) || []).join(' ');
+						});
+						$col.addClass('l12');
+						var $li = $('<li></li>').append($col);
+						$newlis.push($li);
+					});
+				});
+				if($newlis.length>0){
+					$slider.find('ul').empty().append($newlis);
+				}
+			}
 		});
 		
-		//check to see if we need to create slider;
-			$( ".wprev-slider" ).each(function( index ) {
-				createaslider(this,'shortcode');
-			});
-			$( ".wprev-slider-widget" ).each(function( index ) {
-				createaslider(this,'widget');
-			});
-			function createaslider(thissliderdiv,type){
-				//unhide other rows.
-				var showarrows = true;
-				if(type=='widget'){
-					showarrows = false;
-				}
-				$( thissliderdiv ).find('li').show();
-				var slider = $( thissliderdiv ).wprs_unslider(
-						{
-						autoplay:false,
-						infinite:false,
-						delay: '5000',
-						speed: '750',
-						animation: 'horizontal',
-						arrows: showarrows,
-						animateHeight: true,
-						activeClass: 'wprs_unslider-active',
-						}
-					);
-				
+		$( ".wprev-slider" ).each(function( index ) {
+			createaslider(this,'shortcode');
+		});
+		$( ".wprev-slider-widget" ).each(function( index ) {
+			createaslider(this,'widget');
+		});
+
+		function createaslider(thissliderdiv,type){
+			var sliderhideprevnext = $(thissliderdiv).attr( "data-sliderhideprevnext" );
+			var sliderhidedots = $(thissliderdiv).attr( "data-sliderhidedots" );
+			var sliderautoplay = $(thissliderdiv).attr( "data-sliderautoplay" );
+			var slidespeed = $(thissliderdiv).attr( "data-slidespeed" );
+			var slideautodelay = $(thissliderdiv).attr( "data-slideautodelay" );
+			var sliderfixedheight = $(thissliderdiv).attr( "data-sliderfixedheight" );
+			var revsameheight = $(thissliderdiv).attr( "data-revsameheight" );
+
+			// Backward-compatible defaults matching previous hardcoded TripAdvisor JS.
+			var showarrows = true;
+			if(type=='widget'){
+				showarrows = false;
+			}
+			if(sliderhideprevnext=="yes"){
+				showarrows = false;
+			}
+
+			var shownav = true;
+			if(sliderhidedots=="yes"){
+				shownav = false;
+			}
+
+			var sautoplay = false;
+			if(sliderautoplay=="yes"){
+				sautoplay = true;
+			}
+
+			var sspeed = 750;
+			if(slidespeed && !isNaN(parseFloat(slidespeed)) && parseFloat(slidespeed)>0){
+				sspeed = parseFloat(slidespeed) * 1000;
+			}
+
+			var sdelay = 5000;
+			if(type=='widget'){
+				sdelay = 3000;
+			}
+			if(slideautodelay && !isNaN(parseFloat(slideautodelay)) && parseFloat(slideautodelay)>0){
+				sdelay = parseFloat(slideautodelay) * 1000;
+			}
+			if(sdelay < sspeed){
+				sdelay = sspeed;
+			}
+
+			var sanimate = true;
+			if(sliderfixedheight=="yes"){
+				sanimate = false;
+			}
+
+			$( thissliderdiv ).find('li').show();
+			var slider = $( thissliderdiv ).wprs_unslider(
+					{
+					autoplay:sautoplay,
+					infinite:false,
+					delay: sdelay,
+					speed: sspeed,
+					animation: 'horizontal',
+					arrows: showarrows,
+					nav: shownav,
+					animateHeight: sanimate,
+					activeClass: 'wprs_unslider-active',
+					}
+				);
+
+			if(sanimate){
 				setTimeout(function(){
-					//height of active slide
 					var firstheight = $(thissliderdiv).find('.wprs_unslider-active').height();
 					$(thissliderdiv).css( 'height', firstheight );
 				}, 500);
-				
-				//slider.on('mouseover', function() {slider.data('wprs_unslider').stop();}).on('mouseout', function() {slider.data('wprs_unslider').start();});
-								
-			};
-			
-		//simple tooltip for added elements and mobile devices
-		$(".wptripadvisor_t1_outer_div").on('mouseenter touchstart', '.wprevtooltip', function(e) {
+			}
+
+			if(sautoplay){
+				slider.on('mouseover', function() {slider.data('wprs_unslider').stop();}).on('mouseout', function() {slider.data('wprs_unslider').start();});
+			}
+
+			if(revsameheight=='yes'){
+				var maxh = 0;
+				$(thissliderdiv).find('.indrevdiv').each(function(){
+					var h = $(this).outerHeight();
+					if(h>maxh){ maxh = h; }
+				});
+				if(maxh>0){
+					$(thissliderdiv).find('.indrevdiv').css('min-height', maxh+'px');
+				}
+			}
+		}
+
+		$(".wptripadvisor_t1_outer_div, .wprevpro_t6_outer_div, .wptripadvisor_t1_outer_div_widget, .wprevpro_t6_outer_div_widget").on('mouseenter touchstart', '.wprevtooltip', function(e) {
 			var titleText = $(this).attr('data-wprevtooltip');
 			$(this).data('tiptext', titleText).removeAttr('data-wprevtooltip');
 			$('<p class="wprevpro_tooltip"></p>').text(titleText).appendTo('body').css('top', (e.pageY - 15) + 'px').css('left', (e.pageX + 10) + 'px').fadeIn('slow');
 		});
-		$(".wptripadvisor_t1_outer_div").on('mouseleave touchend', '.wprevtooltip', function(e) {
+		$(".wptripadvisor_t1_outer_div, .wprevpro_t6_outer_div, .wptripadvisor_t1_outer_div_widget, .wprevpro_t6_outer_div_widget").on('mouseleave touchend', '.wprevtooltip', function(e) {
 			$(this).attr('data-wprevtooltip', $(this).data('tiptext'));
 			$('.wprevpro_tooltip').remove();
 		});
-		$(".wptripadvisor_t1_outer_div").on('mousemove', '.wprevtooltip', function(e) {
+		$(".wptripadvisor_t1_outer_div, .wprevpro_t6_outer_div, .wptripadvisor_t1_outer_div_widget, .wprevpro_t6_outer_div_widget").on('mousemove', '.wprevtooltip', function(e) {
 			$('.wprevpro_tooltip').css('top', (e.pageY - 15) + 'px').css('left', (e.pageX + 10) + 'px');
 		});
-		
-		//going to search for media added to reviews and load lity if we find them.
-		setTimeout(function(){ mediareviewpopup(); }, 500);
-		function mediareviewpopup(){
-			var mediadiv = $(".wprev_media_div");
-			if(mediadiv.length){
-				//make sure lity isn't loaded already in free google version.
-				if(!isScriptAlreadyIncluded('wp-google-places-review-slider/public/js/wprev-public-com-min.js')){
-					//load js and css files.
-					$('<link/>', {
-					   rel: 'stylesheet',
-					   type: 'text/css',
-					   href: wprevpublicjs_script_vars.wprevpluginsurl+"/public/css/lity.min.css"
-					}).appendTo('head');
-					$.getScript(wprevpublicjs_script_vars.wprevpluginsurl+"/public/js/lity.min.js", function() {
-						//script is loaded and ran on document root.
-					});
+
+		// Lazy-load Lity only when review media thumbnails are on the page.
+		// Use a manual open so we don't also fire Lity's built-in [data-lity] handler (double lightbox).
+		function wprevBindMediaLightbox($root) {
+			var $scope = $root && $root.length ? $root : $(document);
+			$scope.off('click.wprevlity', 'a.wprev_media_img_a').on('click.wprevlity', 'a.wprev_media_img_a', function(e) {
+				e.preventDefault();
+				e.stopImmediatePropagation();
+				var href = $(this).attr('href');
+				if (!href || typeof lity !== 'function') {
+					return;
 				}
-			}
-		}
-		
-		function isScriptAlreadyIncluded(src){
-			var scripts = document.getElementsByTagName("script");
-			var tempscriptname;
-			for(var i = 0; i < scripts.length; i++){
-				if(scripts[i].getAttribute('src')) {
-					tempscriptname = scripts[i].getAttribute('src');
-				   if(tempscriptname.includes(src)){
-					   return true;
-				   }
-				}
-			}
-			return false;
+				lity(href);
+			});
 		}
 
+		function wprevEnsureLity(callback) {
+			if (typeof lity === 'function') {
+				callback();
+				return;
+			}
+			var base = (typeof wprevpublicjs_script_vars !== 'undefined' && (wprevpublicjs_script_vars.wprevplugin_url || wprevpublicjs_script_vars.wprevpluginsurl))
+				? (wprevpublicjs_script_vars.wprevplugin_url || wprevpublicjs_script_vars.wprevpluginsurl)
+				: '';
+			if (!base) {
+				return;
+			}
+			if (!document.getElementById('wprev_lity_css')) {
+				var head = document.getElementsByTagName('head')[0];
+				var link = document.createElement('link');
+				link.id = 'wprev_lity_css';
+				link.rel = 'stylesheet';
+				link.type = 'text/css';
+				link.href = base + '/public/css/lity.min.css';
+				link.media = 'all';
+				head.appendChild(link);
+			}
+			$.getScript(base + '/public/js/lity.min.js', callback);
+		}
+
+		if ($('.wprev_media_div a.wprev_media_img_a').length > 0) {
+			wprevEnsureLity(function() {
+				wprevBindMediaLightbox($(document));
+			});
+		}
 		
 	});
 
