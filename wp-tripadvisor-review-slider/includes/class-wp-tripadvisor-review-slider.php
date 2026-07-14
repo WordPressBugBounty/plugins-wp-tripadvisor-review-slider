@@ -69,8 +69,9 @@ class WP_TripAdvisor_Review {
 	public function __construct() {
 
 		$this->_token = 'wp-tripadvisor-review-slider';
-		// 14.6: multi-source TripAdvisor downloads, review list edit/hide/delete, badge averages, Style 6 polish.
-		$this->version = '14.6';
+		// 14.7: security hardening (crawler TLS verification, output escaping, filtersource SQLi fix),
+		// Style 6 BOM fix, Review List edit now opens as an AJAX popup instead of an inline top-of-page form.
+		$this->version = '14.7';
 		//using this for development
 		//$this->version = time();
 
@@ -336,6 +337,9 @@ class WP_TripAdvisor_Review {
 
 		//add ajax for hiding and deleting reviews in table
 		$this->loader->add_action( 'wp_ajax_tripadvisor_hide_review', $plugin_admin, 'wptripadvisor_hidereview_ajax' ); 
+
+		// Review List edit popup: save avatar URL + date without reloading the page.
+		$this->loader->add_action( 'wp_ajax_wptripadvisor_save_review', $plugin_admin, 'wptripadvisor_savereview_ajax' );
 
 		//add ajax for hiding and deleting reviews in table
 		$this->loader->add_action( 'wp_ajax_tripadvisor_find_reviews', $plugin_admin, 'wptripadvisor_getreviews_ajax' );

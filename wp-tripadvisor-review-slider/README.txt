@@ -4,11 +4,11 @@ Donate link: http://ljapps.com/
 Tags: tripadvisor reviews, hotel reviews, restaurant reviews, review slider, social proof
 Requires at least: 3.0.1
 Tested up to: 7.0
-Stable tag: 14.6
+Stable tag: 14.7
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-Display TripAdvisor reviews in a slider or grid. Download multiple locations, store reviews locally, and show badges, photos, and templates.
+Display TripAdvisor reviews in a slider or grid. Download multiple locations, store reviews locally for fast loading, and show badges, photos, and templates.
 
 == Description ==
 
@@ -152,6 +152,12 @@ We are always looking for features to add. Just post on the support forum or con
 7. Create as many templates as you like.
 
 == Changelog ==
+= 14.7 =
+* Security fix: crawler requests now verify TLS certificates (previously disabled), preventing a network man-in-the-middle from injecting forged review data.
+* Security fix: review data from the crawler is sanitized on ingestion and storage, and escaped on output in the admin dashboard widget (stored XSS hardening).
+* Security fix: the template "Filter by Source" value is no longer concatenated into SQL; it is now a bound query parameter, and is restricted to a safe charset at save time (SQL injection fix).
+* Fixed a stray invisible character appearing at the top of Template Style 6 output.
+* Review List: editing a review now opens in a popup and saves via AJAX instead of reloading the page, so your place in a long review list is preserved.
 = 14.6 =
 * Added multi-source TripAdvisor support: add multiple business URLs, download each source separately, and filter templates by source.
 * Badge average rating and total review counts are now stored per TripAdvisor source for more accurate badge display.

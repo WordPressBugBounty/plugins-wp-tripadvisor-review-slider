@@ -188,7 +188,12 @@ if ( isset( $_POST['wprevpro_submitreviewbtn'] ) ) {
 		if ( false !== $updatetempquery ) {
 			$dbmsg = '<div id="setting-error-wprevpro_message" class="updated settings-error notice is-dismissible"><p><strong>' . esc_html__( 'Review Updated!', 'wp-tripadvisor-review-slider' ) . '</strong></p><button type="button" class="notice-dismiss"><span class="screen-reader-text">Dismiss this notice.</span></button></div>';
 		}
-		$currentreview = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table_name} WHERE id = %d", $r_id ) );
+
+		// Reset instead of re-fetching the just-saved review: keeping $currentreview->id
+		// populated here would leave the edit panel open (and its fields filled) after
+		// every save, since the panel's visibility/values are driven by $currentreview.
+		$currentreview     = new stdClass();
+		$currentreview->id = '';
 	}
 }
 ?>
@@ -212,10 +217,14 @@ include 'tabmenu.php';
 	?>
 	<a href="?page=wp_tripadvisor-get_pro"><?php esc_html_e( 'Pro Version', 'wp-tripadvisor-review-slider' ); ?></a>.
 	</p>
-	<?php echo $dbmsg; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- admin notice built above ?>
+	<div id="wprevpro_notices_area"><?php echo $dbmsg; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- admin notice built above ?></div>
 </div>
 
-<div class="wprevpro_margin10 w3-container w3-white w3-border w3-border-light-gray2" id="wptripadvisor_new_review" <?php if ( empty( $currentreview->id ) ) { echo "style='display:none;'"; } ?>>
+<div class="wprevpro_modal_overlay<?php echo empty( $currentreview->id ) ? '' : ' is-open'; ?>" id="wptripadvisor_new_review">
+<div class="wprevpro_modal_box wprevpro_margin10 w3-container w3-white w3-round-small">
+<button type="button" class="wprevpro_modal_closebtn" id="wptripadvisor_modal_closebtn" aria-label="<?php esc_attr_e( 'Close', 'wp-tripadvisor-review-slider' ); ?>">&times;</button>
+<h2><?php esc_html_e( 'Edit Review', 'wp-tripadvisor-review-slider' ); ?></h2>
+<div id="wprevpro_save_review_msg"></div>
 <form name="newreviewform" id="newreviewform" action="?page=wp_tripadvisor-reviews" method="post">
 	<table class="form-table ">
 		<tbody>
@@ -304,7 +313,7 @@ include 'tabmenu.php';
 	<input type="submit" name="wprevpro_submitreviewbtn" id="wprevpro_submitreviewbtn" class="button button-primary" value="<?php esc_attr_e( 'Save Review', 'wp-tripadvisor-review-slider' ); ?>">
 	<a id="wptripadvisor_addnewreview_cancel" class="button button-secondary"><?php esc_html_e( 'Cancel', 'wp-tripadvisor-review-slider' ); ?></a>
 </form>
-</br></br>
+</div>
 </div>
 
 <?php
@@ -410,24 +419,27 @@ if ( $reviewtotalcount > 0 ) {
 		$deleteicon = '<i class="dashicons dashicons-trash deleterev" aria-hidden="true"></i>';
 
 		if ( $reviewsrow->hide === 'yes' ) {
-			$hideicon     = '<i class="dashicons dashicons-hidden hiderev" aria-hidden="true"></i>';
-			$hideurl      = add_query_arg( 'hiderev', $reviewsrow->id, $currenturl );
-			$hideurl      = add_query_arg( 'newvalue', 'no', $hideurl );
+			$hideicon      = '<i class="dashicons dashicons-hidden hiderev" aria-hidden="true"></i>';
 			$hiddentrclass = 'hiddenrow';
 		} else {
-			$hideicon     = '<i class="dashicons dashicons-visibility hiderev" aria-hidden="true"></i>';
-			$hideurl      = add_query_arg( 'hiderev', $reviewsrow->id, $currenturl );
-			$hideurl      = add_query_arg( 'newvalue', 'yes', $hideurl );
+			$hideicon      = '<i class="dashicons dashicons-visibility hiderev" aria-hidden="true"></i>';
 			$hiddentrclass = '';
 		}
 
-		$userpic = '<img style="-webkit-user-select: none;width: 50px;" src="' . esc_url( $reviewsrow->userpic ? $reviewsrow->userpic : $default_avatar ) . '" alt="">';
+		$userpicsrc = $reviewsrow->userpic ? $reviewsrow->userpic : $default_avatar;
+		$userpic    = '<img style="-webkit-user-select: none;width: 50px;" src="' . esc_url( $userpicsrc ) . '" alt="">';
 
-		$editurl   = add_query_arg( 'editrev', $reviewsrow->id, $currenturl );
-		$deleteurl = add_query_arg( 'deleterev', $reviewsrow->id, $currenturl );
-		$editurl   = esc_url( add_query_arg( '_wpnonce', $nonce, $editurl ) );
-		$deleteurl = esc_url( add_query_arg( '_wpnonce', $nonce, $deleteurl ) );
-		$hideurl   = esc_url( add_query_arg( '_wpnonce', $nonce, $hideurl ) );
+		// Data for the JS-driven edit popup, so clicking "edit" never needs a page
+		// reload (and never loses the user's scroll position in the list).
+		$editdata = ' data-rid="' . esc_attr( $reviewsrow->id ) . '"'
+			. ' data-rating="' . esc_attr( $reviewsrow->rating ) . '"'
+			. ' data-title="' . esc_attr( $reviewsrow->review_title ) . '"'
+			. ' data-text="' . esc_attr( $reviewsrow->review_text ) . '"'
+			. ' data-name="' . esc_attr( $reviewsrow->reviewer_name ) . '"'
+			. ' data-pagename="' . esc_attr( $reviewsrow->pagename ) . '"'
+			. ' data-userpic="' . esc_attr( $userpicsrc ) . '"'
+			. ' data-date="' . esc_attr( $reviewsrow->created_time ) . '"'
+			. ' data-type="' . esc_attr( $reviewsrow->type ) . '"';
 
 		$mediahtml = '';
 		if ( $reviewsrow->mediaurlsarrayjson !== '' ) {
@@ -454,14 +466,14 @@ if ( $reviewtotalcount > 0 ) {
 		$sourcename = $reviewsrow->pagename !== '' ? $reviewsrow->pagename : '—';
 
 		$html .= '<tr id="' . esc_attr( $reviewsrow->id ) . '" class="' . esc_attr( $hiddentrclass ) . '">
-						<th scope="col" class="manage-column"><a title="edit" href="' . $editurl . '">' . $editicon . '</a><br><a title="delete" href="' . $deleteurl . '">' . $deleteicon . '</a><br>
-						<a title="hide/unhide" href="' . $hideurl . '">' . $hideicon . '</a>
+						<th scope="col" class="manage-column"><span title="edit" role="button" tabindex="0" class="wprevpro_editrev_link wprevpro_iconbtn"' . $editdata . '>' . $editicon . '</span><br><span title="delete" role="button" tabindex="0" class="wprevpro_deleterev_link wprevpro_iconbtn" data-rid="' . esc_attr( $reviewsrow->id ) . '">' . $deleteicon . '</span><br>
+						<span title="hide/unhide" role="button" tabindex="0" class="wprevpro_hiderev_link wprevpro_iconbtn" data-rid="' . esc_attr( $reviewsrow->id ) . '">' . $hideicon . '</span>
 						</th>
-						<th scope="col" class="manage-column">' . $userpic . '</th>
+						<th scope="col" class="manage-column wprevpro_pic_cell">' . $userpic . '</th>
 						<th scope="col" class="manage-column">' . esc_html( $reviewsrow->reviewer_name ) . '</th>
 						<th scope="col" class="manage-column">' . esc_html( $reviewsrow->rating ) . '</th>
 						<th scope="col" class="manage-column">' . $revtitle . '<span title="' . esc_attr( $reviewsrow->review_text ) . '">' . esc_html( $reviewsrow->review_text ) . '</span>' . $mediahtml . '</th>
-						<th scope="col" class="manage-column">' . esc_html( $reviewsrow->created_time ) . '</th>
+						<th scope="col" class="manage-column wprevpro_date_cell">' . esc_html( $reviewsrow->created_time ) . '</th>
 						<th scope="col" class="manage-column">' . esc_html( $sourcename ) . '</th>
 						<th scope="col" class="manage-column">' . $typecolumn . '</th>
 					</tr>';

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 /**
  * Template Style 6 — card layout with avatar header row.

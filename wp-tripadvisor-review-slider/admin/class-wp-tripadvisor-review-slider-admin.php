@@ -163,7 +163,11 @@ class WP_TripAdvisor_Review_Admin {
 			//scripts for review list page
 			if($_GET['page']=="wp_tripadvisor-reviews"){
 				//admin js
-				wp_enqueue_script('wptripadvisor_review_list_page-js', plugin_dir_url( __FILE__ ) . 'js/wptripadvisor_review_list_page.js', array( 'jquery','media-upload','thickbox' ), $this->version, false );
+				// Depend only on jQuery. thickbox/media-upload are enqueued separately below
+				// for the avatar uploader; declaring them as hard dependencies here risks
+				// WordPress silently dropping this script if either handle isn't registered,
+				// which would break the edit popup, hide, and delete AJAX handlers.
+				wp_enqueue_script('wptripadvisor_review_list_page-js', plugin_dir_url( __FILE__ ) . 'js/wptripadvisor_review_list_page.js', array( 'jquery' ), $this->version, false );
 
 				global $wpdb;
 				$reviews_table_name = $wpdb->prefix . 'wptripadvisor_reviews';
@@ -506,6 +510,94 @@ class WP_TripAdvisor_Review_Admin {
 		echo $insertnum."-".$insertid."-".$i;
 
 		die();
+	}
+
+	/**
+	 * Save an edited review (avatar URL + date) via AJAX from the Review List
+	 * edit popup, so saving never reloads the page / loses the list scroll position.
+	 *
+	 * @access  public
+	 * @since   14.7
+	 * @return  void
+	 */
+	public function wptripadvisor_savereview_ajax() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Insufficient permissions', 'wp-tripadvisor-review-slider' ) ) );
+			return;
+		}
+
+		check_ajax_referer( 'randomnoncestring', 'wptripadvisor_nonce' );
+
+		global $wpdb;
+		$table_name = $wpdb->prefix . 'wptripadvisor_reviews';
+
+		$r_id       = isset( $_POST['editrid'] ) ? absint( $_POST['editrid'] ) : 0;
+		$avatar_url = isset( $_POST['avatar_url'] ) ? esc_url_raw( wp_unslash( $_POST['avatar_url'] ) ) : '';
+		$rdate_raw  = isset( $_POST['review_date'] ) ? sanitize_text_field( wp_unslash( $_POST['review_date'] ) ) : '';
+
+		if ( $r_id <= 0 ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid review.', 'wp-tripadvisor-review-slider' ) ) );
+			return;
+		}
+
+		$existing = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table_name} WHERE id = %d", $r_id ) );
+		if ( ! $existing ) {
+			wp_send_json_error( array( 'message' => __( 'Review not found.', 'wp-tripadvisor-review-slider' ) ) );
+			return;
+		}
+
+		$parsed_stamp = $rdate_raw !== '' ? strtotime( $rdate_raw ) : false;
+		if ( ! $parsed_stamp ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid date. Use the format YYYY-MM-DD HH:MM:SS.', 'wp-tripadvisor-review-slider' ) ) );
+			return;
+		}
+
+		$created_time = date( 'Y-m-d H:i:s', $parsed_stamp );
+		$data         = array(
+			'userpic'            => $avatar_url,
+			'created_time'       => $created_time,
+			'created_time_stamp' => $parsed_stamp,
+		);
+		$format = array( '%s', '%s', '%d' );
+
+		// Keep hidden-reviews fingerprint in sync when date changes.
+		// Duplicate downloads still match on reviewer_name + review_length, so this is safe.
+		if ( $existing->hide === 'yes' ) {
+			$old_val = $existing->reviewer_name . '-' . $existing->created_time_stamp . '-' . $existing->review_length . '-' . $existing->type . '-' . $existing->rating;
+			$new_val = $existing->reviewer_name . '-' . $parsed_stamp . '-' . $existing->review_length . '-' . $existing->type . '-' . $existing->rating;
+
+			$tripadvisorhidden      = get_option( 'wptripadvisor_hidden_reviews' );
+			$tripadvisorhiddenarray = $tripadvisorhidden ? json_decode( $tripadvisorhidden, true ) : array();
+			if ( ! is_array( $tripadvisorhiddenarray ) ) {
+				$tripadvisorhiddenarray = array();
+			}
+			$key = array_search( $old_val, $tripadvisorhiddenarray, true );
+			if ( $key !== false ) {
+				$tripadvisorhiddenarray[ $key ] = $new_val;
+				update_option( 'wptripadvisor_hidden_reviews', wp_json_encode( array_values( $tripadvisorhiddenarray ) ) );
+			}
+		}
+
+		$updated = $wpdb->update(
+			$table_name,
+			$data,
+			array( 'id' => $r_id ),
+			$format,
+			array( '%d' )
+		);
+
+		if ( false === $updated ) {
+			wp_send_json_error( array( 'message' => __( 'Database error while saving. Please try again.', 'wp-tripadvisor-review-slider' ) ) );
+			return;
+		}
+
+		wp_send_json_success(
+			array(
+				'id'      => $r_id,
+				'userpic' => $avatar_url !== '' ? esc_url( $avatar_url ) : '',
+				'date'    => esc_html( $created_time ),
+			)
+		);
 	}
 
 	/**
@@ -1307,7 +1399,6 @@ class WP_TripAdvisor_Review_Admin {
 		$apitoken = 'a-demo-key-with-low-quota-per-ip-address';
 		$args = array(
 			'timeout'     => 60,
-			'sslverify' => false
 		);
 		$callfreetrip = false;
 		
@@ -1705,21 +1796,23 @@ class WP_TripAdvisor_Review_Admin {
 				$review['userpic'] = '';
 			}
 
+			// Defense in depth: re-sanitize immediately before the DB write, even though
+			// the crawler response is already sanitized when it is first mapped.
 			$reviews[] = array(
 				'pageid'             => $pageid,
 				'pagename'           => trim( $pagename ),
-				'reviewer_name'      => $review['reviewer_name'],
-				'userpic'            => $review['userpic'],
-				'rating'             => $review['rating'],
+				'reviewer_name'      => sanitize_text_field( $review['reviewer_name'] ),
+				'userpic'            => esc_url_raw( $review['userpic'] ),
+				'rating'             => (int) $review['rating'],
 				'created_time'       => $timestamp,
 				'created_time_stamp' => $unixtimestamp,
-				'review_text'        => trim( $review['review_text'] ),
+				'review_text'        => sanitize_textarea_field( trim( $review['review_text'] ) ),
 				'hide'               => '',
 				'review_length'      => $review_length,
 				'type'               => 'TripAdvisor',
-				'review_title'       => $review['review_title'],
+				'review_title'       => sanitize_text_field( $review['review_title'] ),
 				'mediaurlsarrayjson' => $review['mediaurlsarrayjson'],
-				'from_url'           => isset( $review['from_url'] ) ? $review['from_url'] : $listedurl,
+				'from_url'           => isset( $review['from_url'] ) ? esc_url_raw( $review['from_url'] ) : esc_url_raw( $listedurl ),
 			);
 		}
 
@@ -1767,6 +1860,29 @@ class WP_TripAdvisor_Review_Admin {
 		$this->errormsg = $result['ackmsg'];
 
 		return $result;
+	}
+
+	/**
+	 * Sanitize a JSON-encoded array of media URLs coming from the remote
+	 * crawling service before it is stored or re-encoded.
+	 *
+	 * @param string $json Raw JSON string of URLs.
+	 * @return string Re-encoded JSON of sanitized URLs, or '' if invalid.
+	 */
+	private function wprevpro_sanitize_media_urls_json( $json ) {
+		$decoded = json_decode( $json, true );
+		if ( ! is_array( $decoded ) ) {
+			return '';
+		}
+
+		$safe = array();
+		foreach ( $decoded as $url ) {
+			if ( is_string( $url ) && $url !== '' ) {
+				$safe[] = esc_url_raw( $url );
+			}
+		}
+
+		return wp_json_encode( $safe );
 	}
 
 	/**
@@ -1913,7 +2029,6 @@ class WP_TripAdvisor_Review_Admin {
 				$serverresponse='';
 				$args = array(
 					'timeout'     => 120,
-					'sslverify' => false,
 					'headers' => array( 
 						'Content-Type' => ' application/json',
 						'Accept'=> 'application/json'
@@ -1944,7 +2059,7 @@ class WP_TripAdvisor_Review_Admin {
 		//====================
 		if (strpos($serverresponse, "Please wait while your request is being verified") !== false || !isset($serverresponse) || $serverresponse==''  || strpos($serverresponse, "Access denied by Imunify360 bot-protection.") !== false || strpos($serverresponse, "415 Unsupported Media Type") !== false) {
 		   //this site is greylisted by imunify360 on cloudways, call backup digital ocean server
-		   $response = wp_remote_get( 'https://ocean.ljapps.com/crawlrevs.php?rip='.$ip_server.'&surl='.$siteurl.'&scrapeurl='.urlencode($listedurl).'&stype=tripadvisor&nhful='.$nhful.'&locationtype=&scrapequery=&tempbusinessname=&pagenum='.$pagenum.'&nextpageurl='.urlencode($nextpageurl).'&iscron='.$iscron.'&sfp=free&nobot=1', array( 'sslverify' => false, 'timeout' => 150 ) );
+		   $response = wp_remote_get( 'https://ocean.ljapps.com/crawlrevs.php?rip='.$ip_server.'&surl='.$siteurl.'&scrapeurl='.urlencode($listedurl).'&stype=tripadvisor&nhful='.$nhful.'&locationtype=&scrapequery=&tempbusinessname=&pagenum='.$pagenum.'&nextpageurl='.urlencode($nextpageurl).'&iscron='.$iscron.'&sfp=free&nobot=1', array( 'timeout' => 150 ) );
 			if ( is_array( $response ) && ! is_wp_error( $response ) ) {
 				$headers = $response['headers']; // array of http header lines
 				$serverresponse    = $response['body']; // use the content
@@ -2063,28 +2178,30 @@ class WP_TripAdvisor_Review_Admin {
 					
 					$tempownerres='';
 					if(isset($review['owner_response']) && $review['owner_response']!=''){
-						$tempownerres = $review['owner_response'];
+						$tempownerres = sanitize_textarea_field( $review['owner_response'] );
 					}
 					$templocation ='';
 					if(isset($review['location']) && $review['location']!=''){
-						$templocation = $review['location'];
+						$templocation = sanitize_text_field( $review['location'] );
 					}	
 					$tempmediaurlsarrayjson ='';
 					if(isset($review['mediaurlsarrayjson']) && $review['mediaurlsarrayjson']!=''){
-						$tempmediaurlsarrayjson = $review['mediaurlsarrayjson'];
+						$tempmediaurlsarrayjson = $this->wprevpro_sanitize_media_urls_json( $review['mediaurlsarrayjson'] );
 					}					
 					
+					// Untrusted data from the remote crawling service: sanitize every field
+					// before it enters local storage, regardless of transport trust.
 					$reviewsarray[] = [
-					 'reviewer_name' => $review['user_name'],
+					 'reviewer_name' => isset( $review['user_name'] ) ? sanitize_text_field( $review['user_name'] ) : '',
 					 'reviewer_id' => '',
 					 'reviewer_email' => '',
-					 'userpic' => $review['userpic'],
-					 'rating' => $review['rating'],
-					 'updated' => $review['created_time'],
-					 'review_text' => $review['review_text'],
-					 'review_title' => $review['review_title'],
+					 'userpic' => isset( $review['userpic'] ) ? esc_url_raw( $review['userpic'] ) : '',
+					 'rating' => isset( $review['rating'] ) ? (int) $review['rating'] : 0,
+					 'updated' => isset( $review['created_time'] ) ? sanitize_text_field( $review['created_time'] ) : '',
+					 'review_text' => isset( $review['review_text'] ) ? sanitize_textarea_field( $review['review_text'] ) : '',
+					 'review_title' => isset( $review['review_title'] ) ? sanitize_text_field( $review['review_title'] ) : '',
 					 'from_url' => $listedurl,
-					 'from_url_review' => $review['user_link'],
+					 'from_url_review' => isset( $review['user_link'] ) ? esc_url_raw( $review['user_link'] ) : '',
 					 'language_code' => '',
 					 'location' => $templocation,
 					 'recommendation_type' => '',
@@ -2189,7 +2306,6 @@ class WP_TripAdvisor_Review_Admin {
 
 					$args = array(
 						'timeout'     => 60,
-						'sslverify' => false
 					);
 					if($localorphantom =="local"){
 						//echo "local";
@@ -3185,16 +3301,19 @@ class WP_TripAdvisor_Review_Admin {
 				}
 			}
 
+			$rating   = absint( $review->rating );
 			$imgs_url = plugin_dir_url(__DIR__).'/public/partials/imgs/';
-			$starfile = 'tripadvisor_stars_'.$review->rating.'.png';
-			$starhtml='<img src="'.$imgs_url."".$starfile.'" alt="'.$review->rating.' star rating" class="wprev_dash_stars">';
+			$starfile = 'tripadvisor_stars_'.$rating.'.png';
+			$starhtml='<img src="'.esc_url( $imgs_url.$starfile ).'" alt="'.esc_attr( $rating.' star rating' ).'" class="wprev_dash_stars">';
 			
 			$avatarhtml = '';
 			if(isset($review->userpic) && $review->userpic!=''){
-				$avatarhtml = '<img alt="" src="'.$review->userpic.'" class="wprev_dash_avatar" height="40" width="40">';
+				$avatarhtml = '<img alt="" src="'.esc_url( $review->userpic ).'" class="wprev_dash_avatar" height="40" width="40">';
 			}
 			
-			echo '<li><div class="wprev_dash_revdiv">'.$avatarhtml.'<div class="wprev_dash_stars">'.$starhtml.'</div><h4 class="wprev_dash_name">'.$review->reviewer_name.' - <span class="wprev_dash_timeago">'.$daysagohtml.'</span></h4><p class="wprev_dash_text">'.$reviewtext.'</p></div></li>';
+			// Untrusted review data (reviewer name/text) must always be escaped on
+			// output here, even though it is sanitized on the way in.
+			echo '<li><div class="wprev_dash_revdiv">'.$avatarhtml.'<div class="wprev_dash_stars">'.$starhtml.'</div><h4 class="wprev_dash_name">'.esc_html( $review->reviewer_name ).' - <span class="wprev_dash_timeago">'.esc_html( $daysagohtml ).'</span></h4><p class="wprev_dash_text">'.esc_html( $reviewtext ).'</p></div></li>';
 			
 		}
 		echo '</ul>';
@@ -3309,6 +3428,12 @@ class WP_TripAdvisor_Review_Admin {
 			if ( isset( $formarray[ $postkey ] ) ) {
 				$templatemiscarray[ $key ] = sanitize_text_field( $formarray[ $postkey ] );
 			}
+		}
+		// filtersource is later used to build a "pageid = ..." SQL clause, so
+		// restrict it to the same charset TripAdvisor pageids can ever contain
+		// (see wptripadvisor_extract_pageid_from_url()); reject everything else.
+		if ( isset( $templatemiscarray['filtersource'] ) ) {
+			$templatemiscarray['filtersource'] = preg_replace( '/[^A-Za-z0-9_-]/', '', $templatemiscarray['filtersource'] );
 		}
 
 		$color_keys = array( 'bbcolor' => 'wprevpro_t_bbcolor', 'bbkcolor' => 'wprevpro_t_bbkcolor', 'bbtncolor' => 'wprevpro_t_bbtncolor', 'read_more_color' => 'wprevpro_t_read_more_color' );

@@ -143,7 +143,10 @@
 		
 		//badge options
 		$templatemiscarray['blocation']=sanitize_text_field($_POST['wprevpro_t_blocation']);
-		$templatemiscarray['filtersource']=sanitize_text_field($_POST['wprevpro_t_filtersource']);
+		// filtersource is later used to build a "pageid = ..." SQL clause, so
+		// restrict it to the same charset TripAdvisor pageids can ever contain
+		// (see wptripadvisor_extract_pageid_from_url()); reject everything else.
+		$templatemiscarray['filtersource']=preg_replace('/[^A-Za-z0-9_-]/', '', sanitize_text_field($_POST['wprevpro_t_filtersource']));
 		
 		if(isset($_POST['wprevpro_t_bhreviews'])){
 			$templatemiscarray['bhreviews']=sanitize_text_field($_POST['wprevpro_t_bhreviews']);

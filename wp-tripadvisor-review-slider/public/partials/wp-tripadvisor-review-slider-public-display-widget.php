@@ -103,8 +103,13 @@
 				}
 			}
 		}
+		// Never concatenate the stored filtersource value directly into the SQL
+		// string — it is user-controlled template data and must stay out of the
+		// $wpdb->prepare() format string. Use a %s placeholder instead.
+		$sourcelocationvalue = null;
 		if(isset($template_misc_array['filtersource']) && $template_misc_array['filtersource']!=""){
-			$sourcelocationfilter = " AND pageid = '".$template_misc_array['filtersource']."'";
+			$sourcelocationfilter = " AND pageid = %s";
+			$sourcelocationvalue  = $template_misc_array['filtersource'];
 		}
 		
 		//if we are hiding all reviews in badge settings then do not even look for them.
@@ -115,11 +120,15 @@
 		if($template_misc_array['bhreviews']=="yes"){
 			$totalreviews = Array();
 		} else {
+			$prepareargs = array("0","$rlength","$rtype","yes");
+			if($sourcelocationvalue !== null){
+				$prepareargs[] = $sourcelocationvalue;
+			}
 			$totalreviews = $wpdb->get_results(
 				$wpdb->prepare("SELECT * FROM ".$table_name."
 				WHERE id>%d AND review_length >= %d AND type = %s AND hide != %s" .$ratingquery.$sourcelocationfilter."
 				ORDER BY ".$sorttable." ".$sortdir." 
-				LIMIT ".$tablelimit." ", "0","$rlength","$rtype","yes")
+				LIMIT ".$tablelimit." ", $prepareargs)
 			);
 		}
 
