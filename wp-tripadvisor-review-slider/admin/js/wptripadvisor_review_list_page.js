@@ -2,7 +2,7 @@
 	'use strict';
 
 	$(function(){
-
+		
 		// Help button.
 		$( '#wptripadvisor_helpicon' ).click(function() {
 			openpopup(
@@ -275,7 +275,7 @@
 					}
 					closeReviewModal();
 					showListNotice( 'Review Updated!' );
-				} else {
+					} else {
 					var message = ( response && response.data && response.data.message ) ? response.data.message : 'Something went wrong. Please try again.';
 					$( '#wprevpro_save_review_msg' ).html( '<p class="wprevpro_error_msg">' + message + '</p>' );
 				}
@@ -285,7 +285,7 @@
 				$submitBtn.prop( 'disabled', false ).val( originalText );
 			});
 		});
-
+		
 	});
 
 })( jQuery );

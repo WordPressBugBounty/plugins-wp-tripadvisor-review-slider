@@ -4,7 +4,7 @@ Donate link: http://ljapps.com/
 Tags: tripadvisor reviews, hotel reviews, restaurant reviews, review slider, social proof
 Requires at least: 3.0.1
 Tested up to: 7.0
-Stable tag: 14.7
+Stable tag: 14.8
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -152,6 +152,9 @@ We are always looking for features to add. Just post on the support forum or con
 7. Create as many templates as you like.
 
 == Changelog ==
+= 14.8 =
+* small bug fix with png naming
+
 = 14.7 =
 * Security fix: crawler requests now verify TLS certificates (previously disabled), preventing a network man-in-the-middle from injecting forged review data.
 * Security fix: review data from the crawler is sanitized on ingestion and storage, and escaped on output in the admin dashboard widget (stored XSS hardening).
