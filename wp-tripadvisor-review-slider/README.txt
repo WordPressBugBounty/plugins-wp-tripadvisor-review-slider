@@ -4,7 +4,7 @@ Donate link: http://ljapps.com/
 Tags: tripadvisor reviews, hotel reviews, restaurant reviews, review slider, social proof
 Requires at least: 3.0.1
 Tested up to: 7.0
-Stable tag: 14.8
+Stable tag: 14.9
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -152,6 +152,11 @@ We are always looking for features to add. Just post on the support forum or con
 7. Create as many templates as you like.
 
 == Changelog ==
+= 14.9 =
+* Added a new Analytics page for review insights and charts.
+* Added Pro feature highlights and upgrade nudges throughout the admin.
+* Template Filter limited to one source location in free (multi-source is Pro).
+
 = 14.8 =
 * small bug fix with png naming
 

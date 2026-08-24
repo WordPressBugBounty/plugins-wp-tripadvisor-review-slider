@@ -83,9 +83,9 @@ class WP_TripAdvisor_Review_Admin {
 		 * between the defined hooks and the functions defined in this
 		 * class.
 		 */
-		//only load for this plugin wp_tripadvisor-settings-pricing
+		//only load for this plugin pages (wp_tripadvisor-*)
 		if(isset($_GET['page'])){
-			if($_GET['page']=="wp_tripadvisor-reviews" || $_GET['page']=="wp_tripadvisor-templates_posts" || $_GET['page']=="wp_tripadvisor-get_tripadvisor" || $_GET['page']=="wp_tripadvisor-get_pro" || $_GET['page']=="wp_tripadvisor-welcome"){
+			if( strpos( $_GET['page'], 'wp_tripadvisor-' ) !== false ){
 
 			wp_register_style( 'Font_Awesome', 'https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css' );
 			wp_enqueue_style('Font_Awesome');
@@ -93,19 +93,35 @@ class WP_TripAdvisor_Review_Admin {
 				wp_enqueue_style( $this->_token."_wprev_w3", plugin_dir_url( __FILE__ ) . 'css/wprev_w3.css', array(), $this->version, 'all' );
 
 			wp_enqueue_style( $this->_token, plugin_dir_url( __FILE__ ) . 'css/wptripadvisor_admin.css', array(), $this->version, 'all' );
+			wp_enqueue_style( $this->_token . '_wprev_admin', plugin_dir_url( __FILE__ ) . 'css/wprev_admin.css', array(), $this->version, 'all' );
 			wp_enqueue_style( $this->_token."_wptripadvisor_w3", plugin_dir_url( __FILE__ ) . 'css/wptripadvisor_w3.css', array(), $this->version, 'all' );
 			}
 			//load template styles for wp_tripadvisor-templates_posts page
 			if($_GET['page']=="wp_tripadvisor-templates_posts"|| $_GET['page']=="wp_tripadvisor-get_pro" || $_GET['page']=="wp_tripadvisor-welcome"){
 				// Same combined public CSS as the front end (template styles, media thumbs, unslider arrows/dots).
 				wp_enqueue_style( $this->_token."_allcss", plugin_dir_url(dirname(__FILE__)) . 'public/css/wptripadvisor_all.css', array(), $this->version, 'all' );
-				// Lity for review media lightbox in template preview.
+				// Lity for review media lightbox in template preview + AI Summary thumbs.
 				wp_enqueue_style( $this->_token."_lity", plugin_dir_url(dirname(__FILE__)) . 'public/css/lity.min.css', array(), $this->version, 'all' );
 			}
 			
 					//review list
 			if($_GET['page']=="wp_tripadvisor-reviews"){
 				wp_enqueue_style( $this->_token."lity_min", plugin_dir_url( __FILE__ ) . 'css/lity.min.css', array(), $this->version, 'all' );
+			}
+
+			// Star SVG styles for Analytics summary boxes
+			if ( $_GET['page'] === 'wp_tripadvisor-analytics' ) {
+				wp_enqueue_style( $this->_token . '_allcss', plugin_dir_url( dirname( __FILE__ ) ) . 'public/css/wptripadvisor_all.css', array(), $this->version, 'all' );
+				wp_enqueue_style( 'chart-min', plugin_dir_url( __FILE__ ) . 'css/Chart.min.css', array(), $this->version, 'all' );
+				wp_enqueue_style( $this->_token . '_daterangepicker', plugin_dir_url( __FILE__ ) . 'css/daterangepicker.css', array(), $this->version, 'all' );
+				wp_enqueue_style( $this->_token . '_select2', plugin_dir_url( __FILE__ ) . 'css/select2.min.css', array(), $this->version, 'all' );
+				wp_enqueue_style( $this->_token . '_jqcloud', plugin_dir_url( __FILE__ ) . 'css/jqcloud.css', array(), $this->version, 'all' );
+			}
+
+			// AI Analysis sample page
+			if ( $_GET['page'] === 'wp_tripadvisor-ai_analysis' ) {
+				wp_enqueue_style( 'chart-min', plugin_dir_url( __FILE__ ) . 'css/Chart.min.css', array(), $this->version, 'all' );
+				wp_enqueue_style( $this->_token . '_allcss', plugin_dir_url( dirname( __FILE__ ) ) . 'public/css/wptripadvisor_all.css', array(), $this->version, 'all' );
 			}
 		
 		}
@@ -226,6 +242,97 @@ class WP_TripAdvisor_Review_Admin {
 				));
 
 			}
+
+			//scripts for analytics page
+			if ( $_GET['page'] === 'wp_tripadvisor-analytics' ) {
+				global $wpdb;
+				$reviews_table_name = $wpdb->prefix . 'wptripadvisor_reviews';
+				$typearray          = $wpdb->get_col( "SELECT type FROM {$reviews_table_name} WHERE LOWER(type) = 'tripadvisor' GROUP BY type" );
+
+				wp_enqueue_script( 'wprevpro_analytics_page-js', plugin_dir_url( __FILE__ ) . 'js/wprevpro_analytics_page.js', array( 'jquery' ), $this->version, false );
+				wp_localize_script(
+					'wprevpro_analytics_page-js',
+					'adminjs_script_vars',
+					array(
+						'wpfb_nonce'            => wp_create_nonce( 'randomnoncestring' ),
+						'ajax_url'              => admin_url( 'admin-ajax.php' ),
+						'gmt_offset_minutes'    => (int) ( get_option( 'gmt_offset' ) * 60 ),
+						'pluginsUrl'            => wprev_trip_plugin_url,
+						'globalwprevtypearray'  => wp_json_encode( $typearray ),
+						'customSourcesIconUrls' => wp_json_encode( array() ),
+						'msg1'                  => esc_html__( 'Location Filter', 'wp-tripadvisor-review-slider' ),
+						'msg2'                  => esc_html__( 'Type Filter', 'wp-tripadvisor-review-slider' ),
+						'd1'                    => esc_html__( 'Today', 'wp-tripadvisor-review-slider' ),
+						'd2'                    => esc_html__( 'Yesterday', 'wp-tripadvisor-review-slider' ),
+						'd3'                    => esc_html__( 'Last 7 Days', 'wp-tripadvisor-review-slider' ),
+						'd4'                    => esc_html__( 'Last 30 Days', 'wp-tripadvisor-review-slider' ),
+						'd5'                    => esc_html__( 'Last 60 Days', 'wp-tripadvisor-review-slider' ),
+						'd6'                    => esc_html__( 'Last 90 Days', 'wp-tripadvisor-review-slider' ),
+						'd7'                    => esc_html__( 'This Month', 'wp-tripadvisor-review-slider' ),
+						'd8'                    => esc_html__( 'Last Month', 'wp-tripadvisor-review-slider' ),
+						'd9'                    => esc_html__( 'This Year', 'wp-tripadvisor-review-slider' ),
+						'd10'                   => esc_html__( 'Last Year', 'wp-tripadvisor-review-slider' ),
+						'd11'                   => esc_html__( 'All Time', 'wp-tripadvisor-review-slider' ),
+						'msg3'                  => esc_html__( 'Error accessing language function via ajax.', 'wp-tripadvisor-review-slider' ),
+						'msg4'                  => esc_html__( 'Ratings', 'wp-tripadvisor-review-slider' ),
+						'msg5'                  => esc_html__( 'Error returning json object. Please try again or contact us and copy and send us the following:', 'wp-tripadvisor-review-slider' ),
+						'msg6'                  => esc_html__( 'Overall Ratings (Old >> New)', 'wp-tripadvisor-review-slider' ),
+						'msg7'                  => esc_html__( 'Review Response:', 'wp-tripadvisor-review-slider' ),
+						'msg8'                  => esc_html__( 'Type', 'wp-tripadvisor-review-slider' ),
+						'msg9'                  => esc_html__( 'Page', 'wp-tripadvisor-review-slider' ),
+						'msg10'                 => esc_html__( 'Source URL', 'wp-tripadvisor-review-slider' ),
+						'msg11'                 => esc_html__( 'Reviewer URL', 'wp-tripadvisor-review-slider' ),
+						'msg12'                 => esc_html__( 'Review Details', 'wp-tripadvisor-review-slider' ),
+					)
+				);
+
+				wp_register_script( $this->_token . 'chart-js', plugin_dir_url( __FILE__ ) . 'js/Chart.bundle.min.js', array(), $this->version, false );
+				wp_enqueue_script( $this->_token . 'chart-js' );
+
+				wp_register_script( $this->_token . 'chart-js-trendline', plugin_dir_url( __FILE__ ) . 'js/chartjs-plugin-trendline.js', array(), $this->version, false );
+				wp_enqueue_script( $this->_token . 'chart-js-trendline' );
+
+				wp_register_script( $this->_token . '_moment', plugin_dir_url( __FILE__ ) . 'js/moment.min.js', array(), $this->version, false );
+				wp_enqueue_script( $this->_token . '_moment' );
+
+				wp_register_script( $this->_token . '_daterangepicker', plugin_dir_url( __FILE__ ) . 'js/daterangepicker.js', array(), $this->version, false );
+				wp_enqueue_script( $this->_token . '_daterangepicker' );
+
+				wp_register_script( $this->_token . '_select2', plugin_dir_url( __FILE__ ) . 'js/select2.min.js', array(), $this->version, false );
+				wp_enqueue_script( $this->_token . '_select2' );
+
+				wp_register_script( $this->_token . '_jqcloud', plugin_dir_url( __FILE__ ) . 'js/jqcloud.min.js', array(), $this->version, false );
+				wp_enqueue_script( $this->_token . '_jqcloud' );
+
+				wp_enqueue_script( 'thickbox' );
+				wp_enqueue_style( 'thickbox' );
+			}
+
+			//scripts for AI Analysis sample page
+			if ( $_GET['page'] === 'wp_tripadvisor-ai_analysis' ) {
+				wp_enqueue_script( 'thickbox' );
+				wp_enqueue_style( 'thickbox' );
+
+				wp_register_script( $this->_token . 'chart-js', plugin_dir_url( __FILE__ ) . 'js/Chart.bundle.min.js', array(), $this->version, false );
+				wp_enqueue_script( $this->_token . 'chart-js' );
+
+				wp_enqueue_script(
+					'wprevpro_ai_analysis_page-js',
+					plugin_dir_url( __FILE__ ) . 'js/wprevpro_ai_analysis_page.js',
+					array( 'jquery', 'thickbox', $this->_token . 'chart-js' ),
+					$this->version,
+					false
+				);
+				wp_localize_script(
+					'wprevpro_ai_analysis_page-js',
+					'adminjs_script_vars',
+					array(
+						'wpfb_nonce' => wp_create_nonce( 'randomnoncestring' ),
+						'ajax_url'   => admin_url( 'admin-ajax.php' ),
+						'pluginsUrl' => wprev_trip_plugin_url,
+					)
+				);
+			}
 		}
 		
 	}
@@ -274,14 +381,37 @@ class WP_TripAdvisor_Review_Admin {
 		$submenu_title = 'Templates';
 		$submenu_slug = 'wp_tripadvisor-templates_posts';
 		add_submenu_page($menu_slug, $submenu_page_title, $submenu_title, $capability, $submenu_slug, array($this,'wp_tripadvisor_templates_posts'));
-		
-		// Now add the submenu page for the reviews templates
-		//$submenu_page_title = 'WP FB Reviews : Upgrade';
-		//$submenu_title = 'Get Pro';
-		//$submenu_slug = 'wp_tripadvisor-get_pro';
-		//add_submenu_page($menu_slug, $submenu_page_title, $submenu_title, $capability, $submenu_slug, array($this,'wp_fb_getpro'));
-	
 
+		// Analytics
+		$submenu_page_title = 'WP TripAdvisor Reviews : Analytics';
+		$submenu_title = 'Analytics';
+		$submenu_slug = 'wp_tripadvisor-analytics';
+		add_submenu_page( $menu_slug, $submenu_page_title, $submenu_title, $capability, $submenu_slug, array( $this, 'wp_tripadvisor_analytics' ) );
+
+		// Badges (Pro teaser)
+		$submenu_page_title = 'WP TripAdvisor Reviews : Badges';
+		$submenu_title = 'Badges';
+		$submenu_slug = 'wp_tripadvisor-badges';
+		add_submenu_page( $menu_slug, $submenu_page_title, $submenu_title, $capability, $submenu_slug, array( $this, 'wp_tripadvisor_badges' ) );
+
+		// Forms (Pro teaser)
+		$submenu_page_title = 'WP TripAdvisor Reviews : Forms';
+		$submenu_title = 'Forms';
+		$submenu_slug = 'wp_tripadvisor-forms';
+		add_submenu_page( $menu_slug, $submenu_page_title, $submenu_title, $capability, $submenu_slug, array( $this, 'wp_tripadvisor_forms' ) );
+
+		// Floats (Pro teaser)
+		$submenu_page_title = 'WP TripAdvisor Reviews : Floats';
+		$submenu_title = 'Floats';
+		$submenu_slug = 'wp_tripadvisor-float';
+		add_submenu_page( $menu_slug, $submenu_page_title, $submenu_title, $capability, $submenu_slug, array( $this, 'wp_tripadvisor_float' ) );
+
+		// AI Analysis (Pro teaser)
+		$submenu_page_title = 'WP TripAdvisor Reviews : AI Analysis';
+		$submenu_title = 'AI Analysis';
+		$submenu_slug = 'wp_tripadvisor-ai_analysis';
+		add_submenu_page( $menu_slug, $submenu_page_title, $submenu_title, $capability, $submenu_slug, array( $this, 'wp_tripadvisor_ai_analysis' ) );
+	
 	}
 	
 	public function wp_tripadvisor_welcome() {
@@ -298,6 +428,21 @@ class WP_TripAdvisor_Review_Admin {
 	public function wp_tripadvisor_gettripadvisor() {
 		require_once plugin_dir_path( __FILE__ ) . '/partials/get_tripadvisor.php';
 	}
+	public function wp_tripadvisor_analytics() {
+		require_once plugin_dir_path( __FILE__ ) . '/partials/analytics.php';
+	}
+	public function wp_tripadvisor_badges() {
+		require_once plugin_dir_path( __FILE__ ) . '/partials/badges.php';
+	}
+	public function wp_tripadvisor_forms() {
+		require_once plugin_dir_path( __FILE__ ) . '/partials/forms.php';
+	}
+	public function wp_tripadvisor_float() {
+		require_once plugin_dir_path( __FILE__ ) . '/partials/float.php';
+	}
+	public function wp_tripadvisor_ai_analysis() {
+		require_once plugin_dir_path( __FILE__ ) . '/partials/ai_analysis.php';
+	}
 	public function wp_fb_getpro() {
 		require_once plugin_dir_path( __FILE__ ) . '/partials/get_pro.php';
 	}
@@ -309,7 +454,7 @@ class WP_TripAdvisor_Review_Admin {
 		$menu_pos = 1; // whatever position you want your menu to appear
 		if (array_key_exists($menu_slug, $submenu)) {
 		// add the external links to the slug you used when adding the top level menu
-		$submenu[$menu_slug][] = array('<div id="wprev-66023">Go Pro!</div>', 'manage_options', 'https://wpreviewslider.com/');
+		$submenu[$menu_slug][] = array('<div id="wprev-66023">&#11088; Go Pro!</div>', 'manage_options', 'https://wpreviewslider.com/');
 		}
 	}
 	public function wpse_66023_add_jquery() 
@@ -3432,9 +3577,22 @@ class WP_TripAdvisor_Review_Admin {
 		// filtersource is later used to build a "pageid = ..." SQL clause, so
 		// restrict it to the same charset TripAdvisor pageids can ever contain
 		// (see wptripadvisor_extract_pageid_from_url()); reject everything else.
+		// Free version: single source only (never accept comma/array multi-select).
 		if ( isset( $templatemiscarray['filtersource'] ) ) {
-			$templatemiscarray['filtersource'] = preg_replace( '/[^A-Za-z0-9_-]/', '', $templatemiscarray['filtersource'] );
+			$filtersource_raw = $templatemiscarray['filtersource'];
+			if ( is_array( $filtersource_raw ) ) {
+				$filtersource_raw = reset( $filtersource_raw );
+			}
+			$filtersource_raw = sanitize_text_field( (string) $filtersource_raw );
+			// Take first value if a comma-separated list was posted.
+			if ( strpos( $filtersource_raw, ',' ) !== false ) {
+				$parts            = explode( ',', $filtersource_raw );
+				$filtersource_raw = trim( $parts[0] );
+			}
+			$templatemiscarray['filtersource'] = preg_replace( '/[^A-Za-z0-9_-]/', '', $filtersource_raw );
 		}
+
+		$filtersource_single = isset( $templatemiscarray['filtersource'] ) ? $templatemiscarray['filtersource'] : '';
 
 		$color_keys = array( 'bbcolor' => 'wprevpro_t_bbcolor', 'bbkcolor' => 'wprevpro_t_bbkcolor', 'bbtncolor' => 'wprevpro_t_bbtncolor', 'read_more_color' => 'wprevpro_t_read_more_color' );
 		foreach ( $color_keys as $key => $postkey ) {
@@ -3488,7 +3646,7 @@ class WP_TripAdvisor_Review_Admin {
 			'min_words'           => '',
 			'max_words'           => '',
 			'rtype'               => '["tripadvisor"]',
-			'rpage'               => '',
+			'rpage'               => $filtersource_single,
 			'createslider'        => $createslider,
 			'numslides'           => $numslides,
 			'sliderautoplay'      => '',

@@ -50,6 +50,13 @@ include 'tabmenu.php';
 				<?php esc_html_e( 'Add one or more TripAdvisor business pages, then download reviews for each source. Badge averages use the official TripAdvisor rating and review count for that source.', 'wp-tripadvisor-review-slider' ); ?>
 				<br><?php esc_html_e( 'Note: The free version does not currently work for Vacation Rentals.', 'wp-tripadvisor-review-slider' ); ?>
 			</p>
+			<p class="small_message" style="margin-top:8px;">
+				<?php
+				echo wp_kses_post(
+					__( 'Tired of downloading manually? <a href="https://wpreviewslider.com/" target="_blank">Upgrade to Pro</a> to auto-sync new reviews daily across multiple locations. Use code <strong>WPPRO15</strong> for 15% off.', 'wp-tripadvisor-review-slider' )
+				);
+				?>
+			</p>
 
 			<?php settings_errors( 'tripadvisor-radio' ); ?>
 

@@ -69,9 +69,8 @@ class WP_TripAdvisor_Review {
 	public function __construct() {
 
 		$this->_token = 'wp-tripadvisor-review-slider';
-		// 14.7: security hardening (crawler TLS verification, output escaping, filtersource SQLi fix),
-		// Style 6 BOM fix, Review List edit now opens as an AJAX popup instead of an inline top-of-page form.
-		$this->version = '14.8';
+		// 14.9: Analytics page, Pro teaser pages/nudges, single-source Filter in free.
+		$this->version = '14.9';
 		//using this for development
 		//$this->version = time();
 
@@ -260,6 +259,16 @@ class WP_TripAdvisor_Review {
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-wp-tripadvisor-review-slider-admin.php';
 
 		/**
+		 * Analytics AJAX handlers.
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-wp-tripadvisor-review-slider-analytics.php';
+
+		/**
+		 * Sample AI Analysis AJAX handlers (Pro teaser).
+		 */
+		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'admin/class-wp-tripadvisor-review-slider-ai.php';
+
+		/**
 		 * Shared sanitization helpers for template CSS output.
 		 */
 		require_once plugin_dir_path( dirname( __FILE__ ) ) . 'includes/class-wp-tripadvisor-review-slider-sanitize.php';
@@ -375,7 +384,23 @@ class WP_TripAdvisor_Review {
 		$this->loader->add_action( 'admin_menu', $plugin_admin, 'wprev_trip_add_external_link_admin_submenu' );
 		$this->loader->add_action( 'admin_head', $plugin_admin, 'wpse_66023_add_jquery' );
 
-		
+		// Analytics page AJAX
+		$plugin_analytics = new WP_TripAdvisor_Review_Analytics();
+		$this->loader->add_action( 'wp_ajax_wppro_get_overall_chart_data', $plugin_analytics, 'wppro_get_overall_chart_data' );
+		$this->loader->add_action( 'wp_ajax_wprevpro_analytics_volume', $plugin_analytics, 'wprevpro_ajax_analytics_volume' );
+		$this->loader->add_action( 'wp_ajax_wprevpro_analytics_platform', $plugin_analytics, 'wprevpro_ajax_analytics_platform' );
+		$this->loader->add_action( 'wp_ajax_wprevpro_analytics_platform_volume', $plugin_analytics, 'wprevpro_ajax_analytics_platform_volume' );
+		$this->loader->add_action( 'wp_ajax_wprevpro_analytics_rating_trends', $plugin_analytics, 'wprevpro_ajax_analytics_rating_trends' );
+
+		// Sample AI Analysis AJAX
+		$plugin_ai = new WP_TripAdvisor_Review_AI();
+		$this->loader->add_action( 'wp_ajax_wprevpro_ai_get_latest_report', $plugin_ai, 'wprevpro_ai_get_latest_report_ajax' );
+		$this->loader->add_action( 'wp_ajax_wprevpro_ai_get_report', $plugin_ai, 'wprevpro_ai_get_report_ajax' );
+		$this->loader->add_action( 'wp_ajax_wprevpro_ai_list_reports', $plugin_ai, 'wprevpro_ai_list_reports_ajax' );
+		$this->loader->add_action( 'wp_ajax_wprevpro_ai_filters_options', $plugin_ai, 'wprevpro_ai_filters_options_ajax' );
+		$this->loader->add_action( 'wp_ajax_wprevpro_ai_delete_report', $plugin_ai, 'wprevpro_ai_delete_report_ajax' );
+		$this->loader->add_action( 'wp_ajax_wprevpro_ai_reviews_by_date', $plugin_ai, 'wprevpro_ai_reviews_by_date_ajax' );
+
 	}
 
 	/**

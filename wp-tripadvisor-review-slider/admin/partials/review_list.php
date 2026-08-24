@@ -211,11 +211,19 @@ include 'tabmenu.php';
 <div class="wptripadvisor_margin10">
 	<a id="wptripadvisor_helpicon" class="wptripadvisor_btnicononly button dashicons-before dashicons-editor-help"></a>
 	<a id="wptripadvisor_removeallbtn" data-sec="<?php echo esc_attr( $nonce ); ?>" class="button dashicons-before dashicons-no"><?php esc_html_e( 'Remove All Reviews', 'wp-tripadvisor-review-slider' ); ?></a>
+	<a href="https://wpreviewslider.com/" target="_blank" class="button dashicons-before dashicons-plus-alt" title="<?php esc_attr_e( 'Pro feature', 'wp-tripadvisor-review-slider' ); ?>"><?php esc_html_e( 'Add Review', 'wp-tripadvisor-review-slider' ); ?> <span style="background:#ff6b35;color:#fff;padding:1px 5px;border-radius:3px;font-size:10px;font-weight:bold;margin-left:4px;">PRO</span></a>
+	<a href="https://wpreviewslider.com/" target="_blank" class="button dashicons-before dashicons-download" title="<?php esc_attr_e( 'Pro feature', 'wp-tripadvisor-review-slider' ); ?>"><?php esc_html_e( 'Download CSV', 'wp-tripadvisor-review-slider' ); ?> <span style="background:#ff6b35;color:#fff;padding:1px 5px;border-radius:3px;font-size:10px;font-weight:bold;margin-left:4px;">PRO</span></a>
+	<br><span class="small_message">
+	<?php
+	echo wp_kses_post(
+		__( 'Manually add reviews, download/import a CSV, tag reviews, bulk edit, and more available in the <a href="https://wpreviewslider.com/" target="_blank">Pro Version</a> of this plugin!', 'wp-tripadvisor-review-slider' )
+	);
+	?>
+	</span>
 	<p>
 	<?php
-	esc_html_e( 'Click the eye icon to hide or show a review, the wrench to edit the reviewer photo, or the trash icon to delete. More features are available in the', 'wp-tripadvisor-review-slider' );
+	esc_html_e( 'Click the eye icon to hide or show a review, the wrench to edit the reviewer photo, or the trash icon to delete.', 'wp-tripadvisor-review-slider' );
 	?>
-	<a href="?page=wp_tripadvisor-get_pro"><?php esc_html_e( 'Pro Version', 'wp-tripadvisor-review-slider' ); ?></a>.
 	</p>
 	<div id="wprevpro_notices_area"><?php echo $dbmsg; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- admin notice built above ?></div>
 </div>
@@ -480,7 +488,7 @@ if ( $reviewtotalcount > 0 ) {
 	}
 } else {
 	$html .= '<tr>
-						<th colspan="8" scope="col" class="manage-column">' . __( 'No reviews found. Please visit the <a href="?page=wp_tripadvisor-get_tripadvisor">Get TripAdvisor Reviews</a> page to retrieve reviews.', 'wp-tripadvisor-review-slider' ) . '</th>
+						<th colspan="8" scope="col" class="manage-column">' . __( 'No reviews found. Please visit the <a href="?page=wp_tripadvisor-get_tripadvisor">Get TripAdvisor Reviews</a> page to retrieve reviews.', 'wp-tripadvisor-review-slider' ) . '<br><br>' . __( 'Want to put this on autopilot? <a href="https://wpreviewslider.com/" target="_blank">Upgrade to Pro</a> to automatically sync new reviews, pull from 100+ sites, and collect reviews on your site. Use code <strong>WPPRO15</strong> for 15% off.', 'wp-tripadvisor-review-slider' ) . '</th>
 					</tr>';
 }
 
