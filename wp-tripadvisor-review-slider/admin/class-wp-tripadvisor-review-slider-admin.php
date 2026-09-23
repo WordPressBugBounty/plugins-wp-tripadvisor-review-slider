@@ -1864,10 +1864,10 @@ class WP_TripAdvisor_Review_Admin {
 			$forceloop       = isset( $reviewscrawl['forceloop'] ) ? $reviewscrawl['forceloop'] : '';
 			$next_from_crawl = isset( $reviewscrawl['nextpageurl'] ) ? $reviewscrawl['nextpageurl'] : '';
 
-			// First restaurant/hotel/attraction page often only returns the ShowUserReviews link.
+			// First page often only returns the ShowUserReviews link. Pro keeps pagenum at 1
+			// for that follow-up so the crawler still reads the source average and total.
 			if ( $forceloop === 'yes' && $next_from_crawl !== '' ) {
 				$nextpageurl = $next_from_crawl;
-				$pagenum++;
 				continue;
 			}
 

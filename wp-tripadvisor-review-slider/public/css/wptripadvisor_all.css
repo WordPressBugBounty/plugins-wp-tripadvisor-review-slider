@@ -361,6 +361,17 @@ span.wprev-tripadvisor-rating {
     font-size: 18px !important;
     margin-right: 5px !important;
     font-weight: 500 !important;
+    line-height: 1 !important;
+}
+.wprev-tripadvisor-place .wprevstardiv {
+    display: flex !important;
+    align-items: center !important;
+}
+img.wprev-tripadvisor-badge-stars {
+    height: 16px !important;
+    width: auto !important;
+    max-width: 88px !important;
+    display: block !important;
 }
 span.wprev_btot {
     font-weight: 600 !important;

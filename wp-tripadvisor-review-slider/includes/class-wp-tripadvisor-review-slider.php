@@ -69,8 +69,8 @@ class WP_TripAdvisor_Review {
 	public function __construct() {
 
 		$this->_token = 'wp-tripadvisor-review-slider';
-		// 14.9: Analytics page, Pro teaser pages/nudges, single-source Filter in free.
-		$this->version = '14.9';
+		// 15.0: Badge uses the source average, stars, and total saved per location.
+		$this->version = '15.0';
 		//using this for development
 		//$this->version = time();
 

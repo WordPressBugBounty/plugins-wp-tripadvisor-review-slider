@@ -139,4 +139,108 @@ class WP_Trip_Template_Functions {
 		return $media;
 	}
 
+	/**
+	 * Source average and total stored for a location. No local-review fallback.
+	 *
+	 * @param string $pageid TripAdvisor page id (filtersource), or '' for a single-source site.
+	 * @return array{avg:string,total:string}
+	 */
+	public function wprev_badge_avg_total( $pageid ) {
+		global $wpdb;
+		$table = $wpdb->prefix . 'wptripadvisor_total_averages';
+		$row   = null;
+
+		if ( $pageid !== '' ) {
+			$row = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT avg, total FROM {$table} WHERE btp_id = %s LIMIT 1",
+					$pageid
+				)
+			);
+		} else {
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT avg, total FROM {$table} WHERE btp_type = %s",
+					'page'
+				)
+			);
+			if ( is_array( $rows ) && count( $rows ) === 1 ) {
+				$row = $rows[0];
+			}
+		}
+
+		$avg   = '';
+		$total = '';
+		if ( $row ) {
+			$source_avg   = str_replace( ',', '.', trim( (string) $row->avg ) );
+			$source_total = trim( (string) $row->total );
+			if ( is_numeric( $source_avg ) && (float) $source_avg > 0 ) {
+				$avg = $source_avg;
+			}
+			if ( is_numeric( $source_total ) && (int) $source_total > 0 ) {
+				$total = (string) (int) $source_total;
+			}
+		}
+
+		return array(
+			'avg'   => $avg,
+			'total' => $total,
+		);
+	}
+
+	/**
+	 * One-decimal label for a badge average. Empty when there is no rating.
+	 *
+	 * @param string|float $avg Raw average.
+	 * @return string
+	 */
+	public function wprev_format_badge_avg( $avg ) {
+		$avg = (float) str_replace( ',', '.', trim( (string) $avg ) );
+		if ( $avg <= 0 ) {
+			return '';
+		}
+		if ( $avg > 5 ) {
+			$avg = 5;
+		}
+		return number_format( $avg, 1, '.', '' );
+	}
+
+	/**
+	 * TripAdvisor bubble image filename for an average, rounded to the nearest half star.
+	 *
+	 * @param string|float $avg Raw average.
+	 * @return string Filename or '' when there is no rating.
+	 */
+	public function wprev_badge_star_file( $avg ) {
+		$avg = (float) str_replace( ',', '.', trim( (string) $avg ) );
+		if ( $avg <= 0 ) {
+			return '';
+		}
+		if ( $avg > 5 ) {
+			$avg = 5;
+		}
+		$rounded = round( $avg * 2 ) / 2;
+		if ( abs( $rounded - round( $rounded ) ) < 0.001 ) {
+			return 'tripadvisor_stars_' . (int) round( $rounded ) . '.png';
+		}
+		return 'tripadvisor_stars_' . number_format( $rounded, 1, '.', '' ) . '.png';
+	}
+
+	/**
+	 * Badge row: numeric average plus the matching TripAdvisor bubble image.
+	 *
+	 * @param string|float $avg       Raw average.
+	 * @param string       $imgs_base Plugin imgs directory URL, with trailing slash.
+	 * @return string HTML or '' when there is no rating.
+	 */
+	public function wprev_badge_star_html( $avg, $imgs_base ) {
+		$display = $this->wprev_format_badge_avg( $avg );
+		$file    = $this->wprev_badge_star_file( $avg );
+		if ( $display === '' || $file === '' ) {
+			return '';
+		}
+		$src = $imgs_base . $file;
+		return '<div class="wprevstardiv"><span class="wprev-tripadvisor-rating">' . esc_html( $display ) . '</span><img class="wprev-tripadvisor-badge-stars" src="' . esc_url( $src ) . '" alt="' . esc_attr( sprintf( '%s star rating', $display ) ) . '" width="84" height="18"></div>';
+	}
+
 }

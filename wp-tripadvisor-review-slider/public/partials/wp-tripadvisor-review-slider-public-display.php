@@ -232,33 +232,13 @@
 				$badge_style = $badge_style . 'img.sprev-tripadvisor-left-src {border-radius: 50% !important;}';
 			}
 			
-			//finally getting average and total here from source avg/total (crawler), not local COUNT.
-			$templaceid = $template_misc_array['filtersource'];
-			$badgeavg = "";
-			$badgetotal = "";
-			$table_name_avg = $wpdb->prefix . 'wptripadvisor_total_averages';
-			if($templaceid!=""){
-				$currentlocation = $wpdb->get_results($wpdb->prepare(
-					"SELECT avg, total FROM $table_name_avg WHERE pagetype = %s AND btp_id = %s LIMIT 1",
-					'TripAdvisor',
-					$templaceid
-				));
-				if(!empty($currentlocation)){
-					$badgeavg = $currentlocation[0]->avg;
-					$badgetotal = intval($currentlocation[0]->total);
-				}
-			} else {
-				// No source filter: use the only averages row if there is exactly one.
-				$all_avgs = $wpdb->get_results($wpdb->prepare(
-					"SELECT avg, total FROM $table_name_avg WHERE pagetype = %s AND btp_type = %s",
-					'TripAdvisor',
-					'page'
-				));
-				if(is_array($all_avgs) && count($all_avgs) === 1){
-					$badgeavg = $all_avgs[0]->avg;
-					$badgetotal = intval($all_avgs[0]->total);
-				}
-			}
+			// Source avg/total from the crawler, with a fallback to stored reviews.
+			require_once __DIR__ . '/template_class.php';
+			$badge_template_fns = new WP_Trip_Template_Functions();
+			$templaceid = isset( $template_misc_array['filtersource'] ) ? $template_misc_array['filtersource'] : '';
+			$badge_stats = $badge_template_fns->wprev_badge_avg_total( $templaceid );
+			$badgeavg = $badge_stats['avg'];
+			$badgetotal = $badge_stats['total'];
 
 			//if this is left mid then add a style
 			if($template_misc_array['blocation']=="leftmid" || $template_misc_array['blocation']=="rightmid" ){
@@ -317,7 +297,9 @@
 
 			$tripadvisor_btn_svg = '<svg viewBox="0 0 1333.31 1333.31" height="18" width="18" aria-hidden="true"><circle cx="666.66" cy="666.66" r="666.66" fill="#34e0a1"/><path fill="#000000" fill-rule="nonzero" d="M1078.42 536.6l80.45-87.52h-178.4c-89.31-61.01-197.17-96.54-313.81-96.54-116.5 0-224.06 35.61-313.22 96.54H174.6l80.44 87.52c-49.31 44.99-80.22 109.8-80.22 181.75 0 135.79 110.09 245.88 245.88 245.88 64.51 0 123.27-24.88 167.14-65.55l78.81 85.81 78.81-85.73c43.87 40.67 102.57 65.47 167.07 65.47 135.79 0 246.03-110.09 246.03-245.88.07-72.03-30.84-136.83-80.15-181.75zM420.77 884.75c-91.92 0-166.4-74.48-166.4-166.4s74.49-166.4 166.4-166.4c91.92 0 166.4 74.49 166.4 166.4 0 91.91-74.49 166.4-166.4 166.4zm245.96-171.24c0-109.5-79.63-203.5-184.73-243.65 56.84-23.76 119.18-36.94 184.66-36.94 65.47 0 127.89 13.18 184.73 36.94-105.02 40.23-184.65 134.15-184.65 243.65zm245.88 171.24c-91.92 0-166.4-74.48-166.4-166.4s74.49-166.4 166.4-166.4c91.92 0 166.4 74.49 166.4 166.4 0 91.91-74.49 166.4-166.4 166.4zm0-253.7c-48.2 0-87.23 39.03-87.23 87.23 0 48.19 39.03 87.22 87.23 87.22 48.19 0 87.22-39.03 87.22-87.22 0-48.12-39.03-87.23-87.22-87.23zM508 718.35c0 48.19-39.03 87.22-87.23 87.22-48.19 0-87.22-39.03-87.22-87.22 0-48.2 39.03-87.23 87.22-87.23 48.19-.07 87.23 39.03 87.23 87.23z"/></svg>';
 
-			$badgehtml = '<div class="wprev-tripadvisor-place">'.$badgeabovewide1.'<div class="wprev-tripadvisor-left '.$bhphotoclass.'"><img class="sprev-tripadvisor-left-src" src="'.esc_url($imageurl).'" alt="'.esc_attr($businessname).'" width="'.$bimgsize.'" height="'.$bimgsize.'" title="'.esc_attr($businessname).'"></div><div class="wprev-tripadvisor-right"><div class="wprev-tripadvisor-name '.$bhnameclass.'"><a href="'.esc_url($bnameurl).'" target="_blank" rel="nofollow noopener"><span class="wprev-businessname">'.esc_html($businessname).'</span></a></div><div class="wprevstardiv"><span class="wprev-tripadvisor-rating">'.$badgeavg.'</span><span class="wprevpro_star_imgs_T1"><span class="starloc1 wprevpro_star_imgs wprevpro_star_imgsloc1"><span class="svgicons svg-wprsp-star"></span><span class="svgicons svg-wprsp-star"></span><span class="svgicons svg-wprsp-star"></span><span class="svgicons svg-wprsp-star"></span><span class="svgicons svg-wprsp-star"></span></span></span></div><div class="wprev-tripadvisor-basedon '.$bhbasedclass.'">'.$basedontext.'</div>'.$badgeabovewideclose.$badgeabovewideclose.$badgeabovewide2.'<div class="wprev-tripadvisor-powered '.$bhpowclass.'"><img class="wprev-tripadvisor-powered-img" src="'.esc_url($powered_by_svg).'" alt="powered by Tripadvisor" width="102" height="20" title="powered by Tripadvisor"></div><div class="wprev-tripadvisor-wr '.$bhbtnclass.'"><a class="wprev-tripadvisor-wr-a" target="_blank" rel="nofollow noopener" href="'.esc_url($butnlinkurl).'">'.$reviewusontext.' '.$tripadvisor_btn_svg.'</a></div></div></div>';
+			$badgestarhtml = $badge_template_fns->wprev_badge_star_html( $badgeavg, $badge_imgs_base );
+
+			$badgehtml = '<div class="wprev-tripadvisor-place">'.$badgeabovewide1.'<div class="wprev-tripadvisor-left '.$bhphotoclass.'"><img class="sprev-tripadvisor-left-src" src="'.esc_url($imageurl).'" alt="'.esc_attr($businessname).'" width="'.$bimgsize.'" height="'.$bimgsize.'" title="'.esc_attr($businessname).'"></div><div class="wprev-tripadvisor-right"><div class="wprev-tripadvisor-name '.$bhnameclass.'"><a href="'.esc_url($bnameurl).'" target="_blank" rel="nofollow noopener"><span class="wprev-businessname">'.esc_html($businessname).'</span></a></div>'.$badgestarhtml.'<div class="wprev-tripadvisor-basedon '.$bhbasedclass.'">'.$basedontext.'</div>'.$badgeabovewideclose.$badgeabovewideclose.$badgeabovewide2.'<div class="wprev-tripadvisor-powered '.$bhpowclass.'"><img class="wprev-tripadvisor-powered-img" src="'.esc_url($powered_by_svg).'" alt="powered by Tripadvisor" width="102" height="20" title="powered by Tripadvisor"></div><div class="wprev-tripadvisor-wr '.$bhbtnclass.'"><a class="wprev-tripadvisor-wr-a" target="_blank" rel="nofollow noopener" href="'.esc_url($butnlinkurl).'">'.$reviewusontext.' '.$tripadvisor_btn_svg.'</a></div></div></div>';
 			
 							
 		}
