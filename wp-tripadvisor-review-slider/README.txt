@@ -4,7 +4,7 @@ Donate link: http://ljapps.com/
 Tags: tripadvisor reviews, hotel reviews, restaurant reviews, review slider, social proof
 Requires at least: 3.0.1
 Tested up to: 7.0
-Stable tag: 15.0
+Stable tag: 15.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -152,6 +152,14 @@ We are always looking for features to add. Just post on the support forum or con
 7. Create as many templates as you like.
 
 == Changelog ==
+= 15.2 =
+* Template style dropdown previews udpated.
+* Sample AI Analysis page updated.
+* Updated Freemius SDK.
+
+= 15.1 =
+* Checks the reviews table encoding on update and converts legacy utf8 (3-byte) tables to utf8mb4 so reviews containing emojis can be saved.
+
 = 15.0 =
 * Badge shows the TripAdvisor source average, star bubbles, and total review count stored for each location.
 

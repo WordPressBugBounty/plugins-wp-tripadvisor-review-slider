@@ -93,13 +93,16 @@ class WP_TripAdvisor_Review_Admin {
 				wp_enqueue_style( $this->_token."_wprev_w3", plugin_dir_url( __FILE__ ) . 'css/wprev_w3.css', array(), $this->version, 'all' );
 
 			wp_enqueue_style( $this->_token, plugin_dir_url( __FILE__ ) . 'css/wptripadvisor_admin.css', array(), $this->version, 'all' );
-			wp_enqueue_style( $this->_token . '_wprev_admin', plugin_dir_url( __FILE__ ) . 'css/wprev_admin.css', array(), $this->version, 'all' );
+			wp_enqueue_style( $this->_token . '_wprev_admin', plugin_dir_url( __FILE__ ) . 'css/wprev_admin.css', array(), filemtime( plugin_dir_path( __FILE__ ) . 'css/wprev_admin.css' ), 'all' );
 			wp_enqueue_style( $this->_token."_wptripadvisor_w3", plugin_dir_url( __FILE__ ) . 'css/wptripadvisor_w3.css', array(), $this->version, 'all' );
 			}
 			//load template styles for wp_tripadvisor-templates_posts page
 			if($_GET['page']=="wp_tripadvisor-templates_posts"|| $_GET['page']=="wp_tripadvisor-get_pro" || $_GET['page']=="wp_tripadvisor-welcome"){
 				// Same combined public CSS as the front end (template styles, media thumbs, unslider arrows/dots).
 				wp_enqueue_style( $this->_token."_allcss", plugin_dir_url(dirname(__FILE__)) . 'public/css/wptripadvisor_all.css', array(), $this->version, 'all' );
+				if ( $_GET['page'] == 'wp_tripadvisor-templates_posts' ) {
+					wp_enqueue_style( $this->_token . '_pro_style_preview', plugin_dir_url( __FILE__ ) . 'css/wprev_pro_style_preview.css', array( $this->_token . '_allcss' ), filemtime( plugin_dir_path( __FILE__ ) . 'css/wprev_pro_style_preview.css' ), 'all' );
+				}
 				// Lity for review media lightbox in template preview + AI Summary thumbs.
 				wp_enqueue_style( $this->_token."_lity", plugin_dir_url(dirname(__FILE__)) . 'public/css/lity.min.css', array(), $this->version, 'all' );
 			}
@@ -215,7 +218,7 @@ class WP_TripAdvisor_Review_Admin {
 			if($_GET['page']=="wp_tripadvisor-templates_posts"){
 			
 				//admin js
-				wp_enqueue_script('wptripadvisor_templates_posts_page-js', plugin_dir_url( __FILE__ ) . 'js/wptripadvisor_templates_posts_page.js', array( 'jquery' ), $this->version, false );
+				wp_enqueue_script('wptripadvisor_templates_posts_page-js', plugin_dir_url( __FILE__ ) . 'js/wptripadvisor_templates_posts_page.js', array( 'jquery' ), filemtime( plugin_dir_path( __FILE__ ) . 'js/wptripadvisor_templates_posts_page.js' ), false );
 				//used for ajax
 				wp_localize_script('wptripadvisor_templates_posts_page-js', 'adminjs_script_vars', 
 					array(
@@ -320,7 +323,7 @@ class WP_TripAdvisor_Review_Admin {
 					'wprevpro_ai_analysis_page-js',
 					plugin_dir_url( __FILE__ ) . 'js/wprevpro_ai_analysis_page.js',
 					array( 'jquery', 'thickbox', $this->_token . 'chart-js' ),
-					$this->version,
+					filemtime( plugin_dir_path( __FILE__ ) . 'js/wprevpro_ai_analysis_page.js' ),
 					false
 				);
 				wp_localize_script(
@@ -3527,6 +3530,15 @@ class WP_TripAdvisor_Review_Admin {
 		$title              = isset( $formarray['wptripadvisor_template_title'] ) ? sanitize_text_field( $formarray['wptripadvisor_template_title'] ) : '';
 		$template_type      = isset( $formarray['wptripadvisor_template_type'] ) ? sanitize_text_field( $formarray['wptripadvisor_template_type'] ) : 'post';
 		$style              = isset( $formarray['wprevpro_template_style'] ) ? sanitize_text_field( $formarray['wprevpro_template_style'] ) : '1';
+		if ( $style !== '1' && $style !== '6' ) {
+			$style = '1';
+			if ( ! empty( $t_id ) ) {
+				$existing_style = $wpdb->get_var( $wpdb->prepare( "SELECT style FROM {$table_name} WHERE id = %d", absint( $t_id ) ) );
+				if ( $existing_style === '1' || $existing_style === '6' ) {
+					$style = $existing_style;
+				}
+			}
+		}
 		$display_num        = isset( $formarray['wptripadvisor_t_display_num'] ) ? sanitize_text_field( $formarray['wptripadvisor_t_display_num'] ) : '3';
 		$display_num_rows   = isset( $formarray['wptripadvisor_t_display_num_rows'] ) ? sanitize_text_field( $formarray['wptripadvisor_t_display_num_rows'] ) : '1';
 		$display_order      = isset( $formarray['wptripadvisor_t_display_order'] ) ? sanitize_text_field( $formarray['wptripadvisor_t_display_order'] ) : 'newest';
